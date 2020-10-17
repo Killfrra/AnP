@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-//#include <conio.h>
-//#include <locale.h>
+#include <conio.h>
+#include <locale.h>
 #include <stddef.h>
-#include <string.h>
+#include <windows.h> 
+
+//#include <string.h>
 
 #include "quotes.h"
 
@@ -18,7 +20,7 @@
 
 // TYPEDEFS
 typedef char bool;
-typedef char byte;
+//typedef char byte;
 
 typedef struct {
     char group_name[6 * 4 + 1];
@@ -48,14 +50,14 @@ typedef struct {
 #define field_len(s, f) sizeof(((s *) 0)->f)
 #define field(s, g, t, o, l) { s, g, t, offsetof(FileData, o), field_len(FileData, o), l }
 Field fields[] = {
-	field('c', "РЁРёС„СЂ РіСЂСѓРїРїС‹", 's', group_name, 6),
-	field('i', "РќРѕРјРµСЂ Р·Р°С‡РµС‚РЅРѕР№ РєРЅРёР¶РєРё", 'i', gradebook_number, 0),
-	field('n', "Р¤РРћ", 's', full_name, 80),
-	field('g', "РџРѕР»", 'c', gender, 1),
-	field('f', "Р¤РѕСЂРјР° РѕР±СѓС‡РµРЅРёСЏ", 'c', education_form, 1),
-	field('b', "Р”Р°С‚Р° СЂРѕР¶РґРµРЅРёСЏ", 'd', birth_date, 0),
-	field('e', "Р”Р°С‚Р° РїРѕСЃС‚СѓРїР»РµРЅРёСЏ", 'd', admission_date, 0),
-	field('s', "Р‘Р°Р»Р» Р•Р“Р­", 'i', USE_score, 0)
+	field('c', "Шифр группы", 's', group_name, 6),
+	field('i', "Номер зачетной книжки", 'i', gradebook_number, 0),
+	field('n', "ФИО", 's', full_name, 80),
+	field('g', "Пол", 'c', gender, 1),
+	field('f', "Форма обучения", 'c', education_form, 1),
+	field('b', "Дата рождения", 'd', birth_date, 0),
+	field('e', "Дата поступления", 'd', admission_date, 0),
+	field('s', "Балл ЕГЭ", 'i', USE_score, 0)
 };
 #undef field
 
@@ -67,36 +69,16 @@ ListElement * selected, * selected_prev;
 
 bool ignore(){
 	if(getchar() != '\n'){
-		puts("РћСЃС‚Р°РІС€Р°СЏСЃСЏ С‡Р°СЃС‚СЊ Р±СѓРґРµС‚ РїСЂРѕРёРіРЅРѕСЂРёСЂРѕРІР°РЅР°");
+		puts("Оставшаяся часть будет проигнорирована");
 		mistake_quote();
 		while(getchar() != '\n');
 	}
 	return true;
 }
 
-int trim(char * buf, int size){
-	int l, r;
-	for(l = 0; l < size; l++)
-		if(!isspace(buf[l]))
-			break;
-	if(l == size)
-        return 0;
-    for(r = size - 1; r > l; r--)
-        if(!isspace(buf[r]))
-            break;
-	int len = r - l + 1;
-    memcpy(buf, buf + l, len);
-    buf[len] = '\0';
-    return len;
-}
-
-void gets(char * buf, int size, int len){
+void _gets(char * buf, int size, int len){
 	loop {
 		fgets(buf, size, stdin);
-        len = strlen(buf);
-		len = trim(buf, len);
-		if(!len)
-            continue;
         return;
 	}
 }
@@ -113,7 +95,7 @@ bool read_field(int i, FileData * data_ptr){
 		ignore();
 	}
 	else if(fields[i].type == 's'){
-		gets(_ + fields[i].offset, fields[i].size, fields[i].len);
+		_gets(_ + fields[i].offset, fields[i].size, fields[i].len);
 	} else {
 		char fmt[] = { ' ', '%', fields[i].type, '\0' };
 		if(!scanf(fmt, _ + fields[i].offset))
@@ -188,32 +170,32 @@ void print_element(ListElement * cur){
 void _print(){
 
 	if(selected){
-		puts("Р’С‹Р±СЂР°РЅ:");
+		puts("Выбран:");
 		print_element(selected);
 	} else
-		puts("Р­Р»РµРјРµРЅС‚ РЅРµ РІС‹Р±СЂР°РЅ");
+		puts("Элемент не выбран");
 
 	if(head){
 		if(selected)
-			puts("РЎРїРёСЃРѕРє:");
+			puts("Список:");
 		ListElement * cur = head;
 		do {
 			print_element(cur);
 			cur = cur->next;
 		} while(cur);
 	} else
-		puts("РЎРїРёСЃРѕРє РїСѓСЃС‚");
+		puts("Список пуст");
 }
 
 void _select(){
 	int id;
-	printf("РќРѕРјРµСЂ Р·Р°С‡С‘С‚РЅРѕР№ РєРЅРёР¶РєРё: "); scanf("%i", &id); ignore();
+	printf("Номер зачётной книжки: "); scanf("%i", &id); ignore();
 	ListElement * cur = head, * prev = NULL;
 	while(cur){
 		if(cur->data.gradebook_number == id){
 			selected_prev = prev;
 			selected = cur;
-			puts("Р’С‹Р±СЂР°РЅ:");
+			puts("Выбран:");
 			print_element(selected);
 			return;
 		}
@@ -228,23 +210,23 @@ void _select(){
 
 void _edit(){
 	if(selected){
-		puts("РџРѕР»Рµ РґР»СЏ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ:");
+		puts("Поле для редактирования:");
 		foreach(i, fields)
 			printf("%c %s\n", fields[i].shortcut, fields[i].name);
 		char ch;
 		putchar('>'); scanf(" %c", &ch); ignore();
 		foreach(i, fields)
 			if(fields[i].shortcut == ch){
-				printf("РќРѕРІРѕРµ Р·РЅР°С‡РµРЅРёРµ РїРѕР»СЏ: ");
+				printf("Новое значение поля: ");
 				read_field(i, &selected->data);
-				//puts("РћС‚СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРѕ");
+				//puts("Отредактировано");
 				edit_quote();
 				return;
 			}
-		puts("Error 404. РџРѕР»Рµ РЅРµ РЅР°Р№РґРµРЅРѕ");
+		puts("Error 404. Поле не найдено");
 		mistake_quote();
 	} else {
-		puts("Error 400. РќРёС‡РµРіРѕ РЅРµ РІС‹Р±СЂР°РЅРѕ");
+		puts("Error 400. Ничего не выбрано");
 		mistake_quote();
 	}
 }
@@ -261,17 +243,23 @@ void _remove(){
 		free(selected);
 		selected_prev = NULL;
 		selected = NULL;
-		//puts("РЈРґР°Р»РµРЅРѕ");
+		//puts("Удалено");
 		remove_quote();
 	} else {
-		puts("Error 400. РќРёС‡РµРіРѕ РЅРµ РІС‹Р±СЂР°РЅРѕ");
+		puts("Error 400. Ничего не выбрано");
 		mistake_quote();
 	}
 }
 
 int main(){
+
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	COORD cursor_pos = { 0 ,0 };
+
+	SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
+	//FillConsoleOutputAttribute(hConsole, );
 	
-	//setlocale(LC_ALL, "rus");
+	setlocale(LC_ALL, "rus");
 
 	FILE * internal = fopen("internal", "r+");
 	if(internal)
@@ -286,10 +274,14 @@ int main(){
     last_readed = new(ListElement);
 
 	while(true){
-		char ch; // = getch()
-		putchar('>'); scanf(" %c", &ch); ignore();
-		//printf("> %c\n", ch);
-		switch(ch){
+
+		SetConsoleCursorPosition(hConsole, cursor_pos);
+		
+		putchar('>');
+        char ch = getch();
+		//scanf(" %c", &ch); ignore();
+		printf("%c\n", ch);
+        switch(ch){
 			case 'o': _organize();	break;
 			case 'a': _add();		break;
 			case 'p': _print(); 	break;
@@ -298,7 +290,7 @@ int main(){
 			case 'r': _remove();	break;
 			case 'q': goto exit;
 			default:
-				puts("Error 404. Р¤СѓРЅРєС†РёСЏ РЅРµ РЅР°Р№РґРµРЅР°");
+				puts("Error 404. Функция не найдена");
 				mistake_quote();
 		}
 	}
