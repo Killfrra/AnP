@@ -10,6 +10,8 @@
 #define ARROW_LEFT 75
 #define ARROW_RIGHT 77
 
+#define BACKGROUND_WHITE (BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED)
+
 #define TOP_OFFSET 1
 #define BUFFER_Y 3
 
@@ -74,7 +76,14 @@ void clear(short from, short to){
     COORD coord = { 0, from };
     DWORD written;
     FillConsoleOutputCharacter(stdout_handle, ' ', buffer_info.dwSize.X * to, coord, &written);
+    FillConsoleOutputAttribute(stdout_handle, buffer_info.wAttributes, buffer_info.dwSize.X * to, coord, &written);
     setCursorPosition(0, from);
+}
+
+void fill(short from_x, short from_y, DWORD _len, WORD attr){
+    DWORD written;
+    COORD coord = { from_x, from_y };
+    FillConsoleOutputAttribute(stdout_handle, attr, _len, coord, &written);
 }
 
 void redraw_list(){
@@ -84,13 +93,10 @@ void redraw_list(){
     if(head){
         ListElement * cur = first_element_on_screen;
         for(int i = 0; cur && i < BUFFER_Y; i++){
-            if(selected_element_pos_on_screen == i)
-                putchar('>');
-            else
-                putchar(' ');
             print(cur);
             cur = cur->NEXT;
         }
+        fill(0, selected_element_pos_on_screen, buffer_info.dwSize.X, BACKGROUND_WHITE);
     } else
         puts("Nothing to show");
 }
@@ -110,17 +116,13 @@ void scroll_list(Vertical dir){
             redraw_list();
         } else {
 
-            setCursorPosition(0, selected_element_pos_on_screen);
-            putchar(' ');
-            print(selected_element);
+            fill(0, selected_element_pos_on_screen, buffer_info.dwSize.X - 1, buffer_info.wAttributes);
 
             // char offset[2] = { -1, 1 };
             selected_element_pos_on_screen += dir * 2 - 1; //offset[dir];
             selected_element = selected_element->DIR(dir);
 
-            setCursorPosition(0, selected_element_pos_on_screen);
-            putchar('>');
-            print(selected_element);
+            fill(0, selected_element_pos_on_screen, buffer_info.dwSize.X - 1, BACKGROUND_WHITE);
         }
     } //else
       //  Beep(750, 100);
@@ -134,7 +136,7 @@ typedef struct {
 
 void empty(){}
 
-#define item(name, func) { name, len(name), func }
+#define item(name, func) { name, len(name) - 1, func }
 MenuItem menu_items[] = {
     item( "+",  empty ),
     item("-",  empty),
@@ -162,7 +164,8 @@ void redraw_menu(){
     }
     COORD coord = { menu_len, 0 };
     DWORD written;
-    FillConsoleOutputCharacter(stdout_handle, ' ', buffer_info.dwSize.X - menu_len, coord, &written);
+    FillConsoleOutputAttribute(stdout_handle, BACKGROUND_BLUE, buffer_info.dwSize.X - menu_len, coord, &written);
+    //FillConsoleOutputCharacter(stdout_handle, ' ', buffer_info.dwSize.X - menu_len, coord, &written);
     SetConsoleTextAttribute(stdout_handle, buffer_info.wAttributes);
     //printf("\nDEBUG: %d %d %lu", buffer_info.dwSize.X, menu_len, written);
 }
@@ -184,35 +187,34 @@ int main(){
     stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
     GetConsoleCursorInfo(stdout_handle, &cursor_info);
     GetConsoleScreenBufferInfo(stdout_handle, &buffer_info);
-    for(char i = 0; i < len(menu_items); i++)
+    for(char i = 0; i < len(menu_items); i++){
         menu_len += menu_items[i].name_len + 2; // + 2 spaces
-
+        //printf("DEBUG: %s %d\n", menu_items[i].name, (int) menu_items[i].name_len);
+    }
+    //return 0;
+    
     clear(0, buffer_info.dwSize.Y);
 
     add("one"); // one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one");
     add("two"); // two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two");
-    //add("three"); // three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three");
-    //add("four"); // four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four");
-    //add("five"); // five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five");
+    add("three"); // three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three");
+    add("four"); // four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four");
+    add("five"); // five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five");
     
     setCursorVisibility(FALSE);
     redraw_menu();
-    //redraw_list();
+    redraw_list();
     
     loop {
         int ch = _getch();
         if(ch == 224)
             ch = _getch();
         
-        /*
         if(ch == ARROW_UP)
             scroll_list(UP);
         else if(ch == ARROW_DOWN)
             scroll_list(DOWN);
-        else
-        */
-        
-        if(ch == ARROW_LEFT)
+        else if(ch == ARROW_LEFT)
             scroll_menu(LEFT);
         else if(ch == ARROW_RIGHT)
             scroll_menu(RIGHT);
