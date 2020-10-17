@@ -9,11 +9,42 @@
 #define ARROW_DOWN 80
 #define ARROW_LEFT 75
 #define ARROW_RIGHT 77
+#define KEY_ENTER 13
 
 #define BACKGROUND_WHITE (BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED)
 
-#define TOP_OFFSET 1
-#define BUFFER_Y 3
+HANDLE stdout_handle;
+void setCursorPosition(SHORT x, SHORT y){
+    COORD coord = { x, y };
+    SetConsoleCursorPosition(stdout_handle, coord);
+}
+
+CONSOLE_CURSOR_INFO cursor_info;
+void setCursorVisibility(char state){
+    cursor_info.bVisible = state;
+    SetConsoleCursorInfo(stdout_handle, &cursor_info);
+}
+
+CONSOLE_SCREEN_BUFFER_INFO buffer_info;
+void clear_lines(short from, short to){
+    COORD coord = { 0, from };
+    DWORD written;
+    FillConsoleOutputCharacter(stdout_handle, ' ', buffer_info.dwSize.X * to, coord, &written);
+    FillConsoleOutputAttribute(stdout_handle, buffer_info.wAttributes, buffer_info.dwSize.X * to, coord, &written);
+    setCursorPosition(0, from);
+}
+
+void setColor(short from_x, short from_y, DWORD _len, WORD attr){
+    DWORD written;
+    COORD coord = { from_x, from_y };
+    FillConsoleOutputAttribute(stdout_handle, attr, _len, coord, &written);
+}
+
+void repeat(short from_x, short from_y, DWORD _len, char c){
+    DWORD written;
+    COORD coord = { from_x, from_y };
+    FillConsoleOutputCharacter(stdout_handle, c, _len, coord, &written);
+}
 
 typedef struct {
     char * name;
@@ -35,6 +66,8 @@ ListElement * tail = NULL;
 ListElement * first_element_on_screen = NULL;
 ListElement * selected_element = NULL;
 int selected_element_pos_on_screen = -1;
+short list_first_line = 1;
+short list_last_line = 5;
 
 void add(char * name){
     ListElement * el = new(ListElement);
@@ -59,70 +92,61 @@ void print(ListElement * el){
     printf("%s\n", el->data.name);
 }
 
-HANDLE stdout_handle;
-void setCursorPosition(SHORT x, SHORT y){
-    COORD coord = { x, y };
-    SetConsoleCursorPosition(stdout_handle, coord);
-}
-
-CONSOLE_CURSOR_INFO cursor_info;
-void setCursorVisibility(char state){
-    cursor_info.bVisible = state;
-    SetConsoleCursorInfo(stdout_handle, &cursor_info);
-}
-
-CONSOLE_SCREEN_BUFFER_INFO buffer_info;
-void clear(short from, short to){
-    COORD coord = { 0, from };
-    DWORD written;
-    FillConsoleOutputCharacter(stdout_handle, ' ', buffer_info.dwSize.X * to, coord, &written);
-    FillConsoleOutputAttribute(stdout_handle, buffer_info.wAttributes, buffer_info.dwSize.X * to, coord, &written);
-    setCursorPosition(0, from);
-}
-
-void fill(short from_x, short from_y, DWORD _len, WORD attr){
-    DWORD written;
-    COORD coord = { from_x, from_y };
-    FillConsoleOutputAttribute(stdout_handle, attr, _len, coord, &written);
-}
-
 void redraw_list(){
 
-    setCursorPosition(0, 0); //clear(0, BUFFER_Y);
+    setCursorPosition(0, list_first_line); //clear_lines(0, BUFFER_Y);
 
     if(head){
         ListElement * cur = first_element_on_screen;
-        for(int i = 0; cur && i < BUFFER_Y; i++){
-            print(cur);
+        for(int i = 0; cur && i < (list_last_line - list_first_line); i++){
+            if(i == selected_element_pos_on_screen){
+                SetConsoleTextAttribute(stdout_handle, BACKGROUND_WHITE);
+                print(cur);
+                SetConsoleTextAttribute(stdout_handle, buffer_info.wAttributes);
+            } else
+                print(cur);
             cur = cur->NEXT;
         }
-        fill(0, selected_element_pos_on_screen, buffer_info.dwSize.X, BACKGROUND_WHITE);
+        setColor(0, selected_element_pos_on_screen + list_first_line, buffer_info.dwSize.X - 1, BACKGROUND_WHITE);
+        
+        setCursorPosition(buffer_info.dwSize.X - 1, list_first_line);
+        if(first_element_on_screen != head)
+            putchar('^');
+        else
+            putchar(' ');
+
+        setCursorPosition(buffer_info.dwSize.X - 1, list_last_line);
+        if(cur)
+            putchar('v');
+        else
+            putchar(' ');
+    
     } else
-        puts("Nothing to show");
+        puts("\n Nothing to show");
 }
 
 typedef enum { UP, DOWN } Vertical;
 void scroll_list(Vertical dir){
-
+    if(!head) return;
     if(selected_element->DIR(dir)){
 
         if(dir == UP && selected_element_pos_on_screen == 0){
             first_element_on_screen = first_element_on_screen->PREV;
             selected_element = first_element_on_screen;
             redraw_list();
-        } else if(dir == DOWN && selected_element_pos_on_screen == BUFFER_Y - 1){
+        } else if(dir == DOWN && selected_element_pos_on_screen == list_last_line - list_first_line - 1){
             first_element_on_screen = first_element_on_screen->NEXT;
             selected_element = selected_element->NEXT;
             redraw_list();
         } else {
 
-            fill(0, selected_element_pos_on_screen, buffer_info.dwSize.X - 1, buffer_info.wAttributes);
+            setColor(0, selected_element_pos_on_screen + list_first_line, buffer_info.dwSize.X - 1, buffer_info.wAttributes);
 
             // char offset[2] = { -1, 1 };
             selected_element_pos_on_screen += dir * 2 - 1; //offset[dir];
             selected_element = selected_element->DIR(dir);
 
-            fill(0, selected_element_pos_on_screen, buffer_info.dwSize.X - 1, BACKGROUND_WHITE);
+            setColor(0, selected_element_pos_on_screen + list_first_line, buffer_info.dwSize.X - 1, BACKGROUND_WHITE);
         }
     } //else
       //  Beep(750, 100);
@@ -134,11 +158,25 @@ typedef struct {
     void (* func)();
 } MenuItem;
 
-void empty(){}
+void empty(){
+    printf("DEBUG: empty called");
+}
+
+void add_element(){
+    setCursorPosition(0, 1);
+    printf("Adding element");
+    #define _len len("Adding element")
+    repeat(_len, 1, buffer_info.dwSize.X - _len, '-');
+    #undef _len
+    clear_lines(2, 2);
+    repeat(0, 3, buffer_info.dwSize.X, '-');
+    _getch();
+    redraw_list();
+}
 
 #define item(name, func) { name, len(name) - 1, func }
 MenuItem menu_items[] = {
-    item( "+",  empty ),
+    item("+",  add_element ),
     item("-",  empty),
     item("Edit",  empty),
     item("Search", empty),
@@ -165,9 +203,7 @@ void redraw_menu(){
     COORD coord = { menu_len, 0 };
     DWORD written;
     FillConsoleOutputAttribute(stdout_handle, BACKGROUND_BLUE, buffer_info.dwSize.X - menu_len, coord, &written);
-    //FillConsoleOutputCharacter(stdout_handle, ' ', buffer_info.dwSize.X - menu_len, coord, &written);
     SetConsoleTextAttribute(stdout_handle, buffer_info.wAttributes);
-    //printf("\nDEBUG: %d %d %lu", buffer_info.dwSize.X, menu_len, written);
 }
 
 typedef enum { LEFT, RIGHT } Horizontal;
@@ -189,12 +225,8 @@ int main(){
     GetConsoleScreenBufferInfo(stdout_handle, &buffer_info);
     for(char i = 0; i < len(menu_items); i++){
         menu_len += menu_items[i].name_len + 2; // + 2 spaces
-        //printf("DEBUG: %s %d\n", menu_items[i].name, (int) menu_items[i].name_len);
     }
-    //return 0;
     
-    clear(0, buffer_info.dwSize.Y);
-
     add("one"); // one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one");
     add("two"); // two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two");
     add("three"); // three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three");
@@ -202,13 +234,17 @@ int main(){
     add("five"); // five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five");
     
     setCursorVisibility(FALSE);
+    clear_lines(0, buffer_info.dwSize.Y);
     redraw_menu();
     redraw_list();
     
     loop {
         int ch = _getch();
-        if(ch == 224)
+        //printf("DEBUG: %d\n", ch);
+        if(ch == 224){
             ch = _getch();
+            //printf("DEBUG: %d\n", ch);
+        }
         
         if(ch == ARROW_UP)
             scroll_list(UP);
@@ -218,12 +254,14 @@ int main(){
             scroll_menu(LEFT);
         else if(ch == ARROW_RIGHT)
             scroll_menu(RIGHT);
+        else if(ch == KEY_ENTER)
+            menu_items[selected_menu_item].func();
         else
             break;
     }
 
+    clear_lines(0, buffer_info.dwSize.Y);
     setCursorVisibility(TRUE);
-    clear(0, BUFFER_Y);
 
     return 0;
 }
