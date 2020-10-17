@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <windows.h>
 
-#define new(T) malloc(sizeof(T))
 #define loop while(1)
+#define new(T) malloc(sizeof(T))
+#define len(x)  (sizeof(x) / sizeof((x)[0]))
 
 #define ARROW_UP 72
 #define ARROW_DOWN 80
@@ -29,9 +30,9 @@ enum { SHOW = 0, SEARCH = 2 } link_layer = SHOW;
 
 ListElement * head = NULL;
 ListElement * tail = NULL;
-ListElement * firstElementOnScreen = NULL;
-ListElement * currentSelected = NULL;
-int selectedPosOnScreen = -1;
+ListElement * first_element_on_screen = NULL;
+ListElement * selected_element = NULL;
+int selected_element_pos_on_screen = -1;
 
 void add(char * name){
     ListElement * el = new(ListElement);
@@ -40,9 +41,9 @@ void add(char * name){
         el->PREV = NULL;
         head = el;
 
-        firstElementOnScreen = head;
-        currentSelected = head;
-        selectedPosOnScreen = 0;
+        first_element_on_screen = head;
+        selected_element = head;
+        selected_element_pos_on_screen = 0;
 
     } else {
         tail->NEXT = el;
@@ -81,9 +82,9 @@ void redraw_list(){
     setCursorPosition(0, 0); //clear(0, BUFFER_Y);
 
     if(head){
-        ListElement * cur = firstElementOnScreen;
+        ListElement * cur = first_element_on_screen;
         for(int i = 0; cur && i < BUFFER_Y; i++){
-            if(selectedPosOnScreen == i)
+            if(selected_element_pos_on_screen == i)
                 putchar('>');
             else
                 putchar(' ');
@@ -94,35 +95,88 @@ void redraw_list(){
         puts("Nothing to show");
 }
 
-typedef enum { UP, DOWN } Horizontal;
-void scroll_list(Horizontal dir){
+typedef enum { UP, DOWN } Vertical;
+void scroll_list(Vertical dir){
 
-    if(currentSelected->DIR(dir)){
+    if(selected_element->DIR(dir)){
 
-        if(dir == UP && selectedPosOnScreen == 0){
-            firstElementOnScreen = firstElementOnScreen->PREV;
-            currentSelected = firstElementOnScreen;
+        if(dir == UP && selected_element_pos_on_screen == 0){
+            first_element_on_screen = first_element_on_screen->PREV;
+            selected_element = first_element_on_screen;
             redraw_list();
-        } else if(dir == DOWN && selectedPosOnScreen == BUFFER_Y - 1){
-            firstElementOnScreen = firstElementOnScreen->NEXT;
-            currentSelected = currentSelected->NEXT;
+        } else if(dir == DOWN && selected_element_pos_on_screen == BUFFER_Y - 1){
+            first_element_on_screen = first_element_on_screen->NEXT;
+            selected_element = selected_element->NEXT;
             redraw_list();
         } else {
 
-            setCursorPosition(0, selectedPosOnScreen);
+            setCursorPosition(0, selected_element_pos_on_screen);
             putchar(' ');
-            print(currentSelected);
+            print(selected_element);
 
             // char offset[2] = { -1, 1 };
-            selectedPosOnScreen += dir * 2 - 1; //offset[dir];
-            currentSelected = currentSelected->DIR(dir);
+            selected_element_pos_on_screen += dir * 2 - 1; //offset[dir];
+            selected_element = selected_element->DIR(dir);
 
-            setCursorPosition(0, selectedPosOnScreen);
+            setCursorPosition(0, selected_element_pos_on_screen);
             putchar('>');
-            print(currentSelected);
+            print(selected_element);
         }
     } //else
       //  Beep(750, 100);
+}
+
+typedef struct {
+    char * name;
+    char   name_len;
+    void (* func)();
+} MenuItem;
+
+void empty(){}
+
+#define item(name, func) { name, len(name), func }
+MenuItem menu_items[] = {
+    item( "+",  empty ),
+    item("-",  empty),
+    item("Edit",  empty),
+    item("Search", empty),
+    item("Sort", empty),
+    item("Export", empty),
+    item("Import", empty),
+    item("Save", empty),
+    item("Process", empty)
+};
+
+signed char selected_menu_item = 0;
+int menu_len = 0;
+void redraw_menu(){
+    setCursorPosition( 0, 0);
+    SetConsoleTextAttribute(stdout_handle, BACKGROUND_BLUE);
+    for(int i = 0; i < len(menu_items); i++){
+        if(i == selected_menu_item){
+            SetConsoleTextAttribute(stdout_handle, BACKGROUND_GREEN);
+            printf(" %s ", menu_items[i].name);
+            SetConsoleTextAttribute(stdout_handle, BACKGROUND_BLUE);
+        } else
+            printf(" %s ", menu_items[i].name);
+    }
+    COORD coord = { menu_len, 0 };
+    DWORD written;
+    FillConsoleOutputCharacter(stdout_handle, ' ', buffer_info.dwSize.X - menu_len, coord, &written);
+    SetConsoleTextAttribute(stdout_handle, buffer_info.wAttributes);
+    //printf("\nDEBUG: %d %d %lu", buffer_info.dwSize.X, menu_len, written);
+}
+
+typedef enum { LEFT, RIGHT } Horizontal;
+void scroll_menu(Horizontal dir){
+
+    selected_menu_item += dir * 2 - 1;
+    if(selected_menu_item < 0)
+        selected_menu_item = len(menu_items) - 1;
+    else if(selected_menu_item == len(menu_items))
+        selected_menu_item = 0;
+    
+    redraw_menu();
 }
 
 int main(){
@@ -130,27 +184,38 @@ int main(){
     stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
     GetConsoleCursorInfo(stdout_handle, &cursor_info);
     GetConsoleScreenBufferInfo(stdout_handle, &buffer_info);
+    for(char i = 0; i < len(menu_items); i++)
+        menu_len += menu_items[i].name_len + 2; // + 2 spaces
 
     clear(0, buffer_info.dwSize.Y);
 
     add("one"); // one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one");
     add("two"); // two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two");
-    add("three"); // three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three");
-    add("four"); // four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four");
-    add("five"); // five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five");
+    //add("three"); // three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three");
+    //add("four"); // four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four");
+    //add("five"); // five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five");
     
     setCursorVisibility(FALSE);
-    redraw_list();
+    redraw_menu();
+    //redraw_list();
     
     loop {
         int ch = _getch();
         if(ch == 224)
             ch = _getch();
         
+        /*
         if(ch == ARROW_UP)
             scroll_list(UP);
         else if(ch == ARROW_DOWN)
             scroll_list(DOWN);
+        else
+        */
+        
+        if(ch == ARROW_LEFT)
+            scroll_menu(LEFT);
+        else if(ch == ARROW_RIGHT)
+            scroll_menu(RIGHT);
         else
             break;
     }

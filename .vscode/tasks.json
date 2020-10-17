@@ -5,7 +5,7 @@
     "tasks": [
         {
             "type": "shell",
-            "label": "C/C++: x86_64-w64-mingw32-gcc build active file",
+            "label": "C/C++: x86_64-w64-mingw32-gcc build active file on Linux",
             "command": "/usr/bin/x86_64-w64-mingw32-gcc",
             "args": [
                 "-g",
@@ -23,6 +23,25 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "type": "shell",
+            "label": "C/C++: x86_64-w64-mingw32-gcc build active file on Windows",
+            "command": "C:/Program Files (x86)/Dev-Cpp/MinGW64/bin/gcc.exe",
+            "args": [
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}",
+                "-std=c11"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": "build"
         }
     ]
 }
