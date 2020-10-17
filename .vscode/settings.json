@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "cstdlib": "c",
+        "cstdio": "c",
+        "cmath": "c",
+        "*.tcc": "c",
+        "functional": "c",
+        "istream": "c",
+        "limits": "c",
+        "tuple": "c"
+    }
+}
