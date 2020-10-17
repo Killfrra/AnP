@@ -23,7 +23,7 @@ ListElement * head = NULL;
 ListElement * tail = NULL;
 ListElement * firstElementOnScreen = NULL;
 ListElement * currentSelected = NULL;
-int selectedPosOnScreen = 0;
+int selectedPosOnScreen = -1;
 
 void add(char * name){
     ListElement * el = new(ListElement);
@@ -31,6 +31,11 @@ void add(char * name){
     if(!head){
         el->PREV = NULL;
         head = el;
+
+        firstElementOnScreen = head;
+        currentSelected = head;
+        selectedPosOnScreen = 0;
+
     } else {
         tail->NEXT = el;
         el->PREV = tail;
@@ -56,16 +61,15 @@ void setCursorVisibility(char state){
 }
 
 CONSOLE_SCREEN_BUFFER_INFO buffer_info;
-void clear(){
-    GetConsoleScreenBufferInfo(stdout_handle, &buffer_info);
-    COORD coord = { 0, 0 };
+void clear(short from, short to){
+    COORD coord = { 0, from };
     DWORD written;
-    FillConsoleOutputCharacter(stdout_handle, ' ', buffer_info.dwSize.X * buffer_info.dwSize.Y, coord, &written);
-    setCursorPosition(0, 0);
+    FillConsoleOutputCharacter(stdout_handle, ' ', buffer_info.dwSize.X * to, coord, &written);
+    setCursorPosition(0, from);
 }
 
 void redraw(){
-    clear(); //setCursorPosition(0, 0);
+    clear(0, BUFFER_Y); //setCursorPosition(0, 0);
     ListElement * cur = firstElementOnScreen;
     for(int i = 0; cur && i < BUFFER_Y; i++){
         if(selectedPosOnScreen == i)
@@ -79,14 +83,13 @@ void redraw(){
 
 void scroll(){
 
-    setCursorVisibility(FALSE);
-
-    if(!firstElementOnScreen){
-        firstElementOnScreen = head;
-        currentSelected = head;
-        selectedPosOnScreen = 0;
+    if(!head){
+        clear(0, BUFFER_Y);
+        puts("Nothing to show");
+        return;
     }
 
+    setCursorVisibility(FALSE);
     redraw();
     
     loop {
@@ -136,37 +139,6 @@ void scroll(){
             }
         } else
             Beep(750, 100);
-
-        /*
-        if(ch == 'w'){
-            if(currentSelected->PREV){
-                coord.Y = selectedPosOnScreen - 1;
-                SetConsoleCursorPosition(stdout_handle, coord);
-                putchar('>');
-                print(currentSelected->PREV);
-                putchar(' ');
-                print(currentSelected);
-                
-                selectedPosOnScreen--;
-                currentSelected = currentSelected->PREV;
-            } else
-                Beep(750, 100);
-        } else if(ch == 's'){
-            if(currentSelected->NEXT){
-                coord.Y = selectedPosOnScreen;
-                SetConsoleCursorPosition(stdout_handle, coord);
-                putchar(' ');
-                print(currentSelected);
-                putchar('>');
-                print(currentSelected->NEXT);
-
-                selectedPosOnScreen++;
-                currentSelected = currentSelected->NEXT;
-            } else
-                Beep(750, 100);
-        } else
-            break;
-        */
     }
 
     setCursorVisibility(TRUE);
@@ -177,17 +149,18 @@ int main(){
 
     stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
     GetConsoleCursorInfo(stdout_handle, &cursor_info);
+    GetConsoleScreenBufferInfo(stdout_handle, &buffer_info);
 
-    clear();
+    clear(0, buffer_info.dwSize.Y);
 
-    add("one"); // one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one");
-    add("two"); // two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two");
-    add("three"); // three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three");
-    add("four"); // four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four");
-    add("five"); // five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five");
+    //add("one"); // one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one");
+    //add("two"); // two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two");
+    //add("three"); // three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three");
+    //add("four"); // four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four");
+    //add("five"); // five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five");
     scroll();
 
-    clear();
+    //clear(0, BUFFER_Y);
 
     return 0;
 }
