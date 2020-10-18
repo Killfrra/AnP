@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <windows.h>
 #include <conio.h>
-#include <string.h>
+//#include <string.h>
+#include <stddef.h>
 
 #define loop while(1)
 #define new(T) malloc(sizeof(T))
@@ -54,9 +55,17 @@ typedef struct {
     unsigned short y;
 } Date;
 
+void print_date(Date date){
+    printf("%02hu.%02hu.%04hu", (unsigned short) date.d, (unsigned short) date.m, (unsigned short) date.y);
+}
+
 typedef struct {
-    char name[32];
-    Date birth_date;
+    char group_name[6 + 1]; // 7
+    int gradebook_number; // 4
+    char full_name[32];     // 32
+    char gender, education_form; // 1 + 1
+    Date birth_date, admission_date; // 4 + 4
+    int USE_score;    // TODO: change to short
 } FileData;
 
 typedef struct list_element {
@@ -70,10 +79,35 @@ enum { SHOW = 0, SEARCH = 2 } link_layer = SHOW;
 #define PREV   link[0 + link_layer]
 #define NEXT   link[1 + link_layer]
 
+typedef struct {
+    char shortcut;
+    char * name;
+    char type;
+    size_t offset;
+    char size;
+    union {
+        char values[5];
+        char allow_digits;
+    } prop;
+} Field;
+
+Field form[] = {
+	{ 'c', "Шифр группы", 's', offsetof(FileData, group_name), 6, { allow_digits: TRUE }},
+	{ 'i', "Номер зачетной книжки", 'i', offsetof(FileData, gradebook_number), 6 },
+	{ 'n', "ФИО", 's', offsetof(FileData, full_name), sizeof(((FileData*) 0)->full_name), { allow_digits: FALSE } },
+	{ 'g', "Пол", 'c', offsetof(FileData, gender), 1, { values: "\2mf" } },
+	{ 'f', "Форма обучения", 'c', offsetof(FileData, education_form), 1, { values: "\3ozd" } },
+	{ 'b', "Дата рождения", 'd', offsetof(FileData, birth_date), 10 },
+	{ 'e', "Дата поступления", 'd', offsetof(FileData, admission_date), 10 },
+	{ 's', "Балл ЕГЭ", 'i', offsetof(FileData, USE_score), 3}
+};
+
 ListElement * head = NULL;
 ListElement * tail = NULL;
 ListElement * first_element_on_screen = NULL;
 ListElement * selected_element = NULL;
+ListElement * last_readed;
+
 int selected_element_pos_on_screen = -1;
 short list_first_line = 1;
 short list_last_line = 5;
@@ -99,8 +133,13 @@ void add(char * name){
     tail = el;
 }
 */
-void print(ListElement * el){
-    printf("%s\n", el->data.name);
+void print_element(ListElement * cur){
+	FileData * _ = &cur->data;
+	printf("%s %hu %s %c %c ", &_->group_name[1], _->gradebook_number, &_->full_name[1], _->gender, _->education_form);
+    print_date(_->birth_date);
+    putchar(' ');
+    print_date(_->admission_date);
+    printf(" %hu", _->USE_score);
 }
 
 void redraw_list(){
@@ -112,10 +151,10 @@ void redraw_list(){
         for(int i = 0; cur && i < (list_last_line - list_first_line); i++){
             if(i == selected_element_pos_on_screen){
                 SetConsoleTextAttribute(stdout_handle, BACKGROUND_WHITE);
-                print(cur);
+                print_element(cur);
                 SetConsoleTextAttribute(stdout_handle, buffer_info.wAttributes);
             } else
-                print(cur);
+                print_element(cur);
             cur = cur->NEXT;
         }
         setColor(0, selected_element_pos_on_screen + list_first_line, buffer_info.dwSize.X - 1, BACKGROUND_WHITE);
@@ -229,13 +268,7 @@ void scroll_menu(Horizontal dir){
     redraw_menu();
 }
 
-ListElement * last_readed;
-
-typedef struct {
-    char offset, size;
-} Field;
-
-char read_string(char enter_dir, char * dest, char buffer_size){
+char read_string(char enter_dir, short posx, char * dest, char buffer_size, char allow_digits){
     
     char * buffer = &dest[1];
     unsigned char last_char = dest[0];
@@ -243,9 +276,9 @@ char read_string(char enter_dir, char * dest, char buffer_size){
     if(enter_dir == ARROW_LEFT)
         cursor_pos = last_char;
 
-    setCursorPosition(0, 0);
+    setCursorPosition(posx, 0);
     printf("%s", buffer);
-    setCursorPosition(cursor_pos, 0);
+    setCursorPosition(posx + cursor_pos, 0);
 
     int ch;
     loop {
@@ -257,22 +290,22 @@ char read_string(char enter_dir, char * dest, char buffer_size){
             //printf("DEBUG: %d\n", ch);
             if(ch == ARROW_LEFT){
                 if(cursor_pos != 0){
-                    setCursorPosition(cursor_pos - 1, 0);
+                    setCursorPosition(posx + cursor_pos - 1, 0);
                     cursor_pos--;
                 } else
                     goto exit;
             } else if(ch == ARROW_RIGHT){
                 if(cursor_pos != last_char){
-                    setCursorPosition(cursor_pos + 1, 0);
+                    setCursorPosition(posx + cursor_pos + 1, 0);
                     cursor_pos++;
                 } else
                     goto exit;
             } else if(ch == ARROW_UP){
                 cursor_pos = 0;
-                setCursorPosition(0, 0);
+                setCursorPosition(posx, 0);
             } else if(ch == ARROW_DOWN){
                 cursor_pos = last_char;
-                setCursorPosition(cursor_pos, 0);
+                setCursorPosition(posx + cursor_pos, 0);
             }
         } else {
             //printf("DEBUG: %c not 244\n", ch);
@@ -280,7 +313,7 @@ char read_string(char enter_dir, char * dest, char buffer_size){
                 goto exit;
             else if(ch == KEY_BACKSPACE){
                 if(cursor_pos != 0){
-                    setCursorPosition(cursor_pos - 1, 0);
+                    setCursorPosition(posx + cursor_pos - 1, 0);
                     if(cursor_pos == last_char)
                         putchar(' ');
                     else {
@@ -291,26 +324,27 @@ char read_string(char enter_dir, char * dest, char buffer_size){
                     }
                     cursor_pos--;
                     last_char--;
-                    setCursorPosition(cursor_pos, 0);
+                    setCursorPosition(posx + cursor_pos, 0);
                 }
             } else if
             (
-                    (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-                    (ch >= 'а' && ch <= 'я') || (ch >= 'А' && ch <= 'Я') ||
-                    // пробел не может быть первым, не может идти два раза подряд
-                    (ch == ' ' && (cursor_pos != 0 && buffer[cursor_pos - 1] != ' '))
+                (allow_digits && ch >= '0' && ch <= '9') ||
+                (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+                (ch >= 'а' && ch <= 'я') || (ch >= 'А' && ch <= 'Я') ||
+                // пробел не может быть первым, не может идти два раза подряд
+                (ch == ' ' && (cursor_pos != 0 && buffer[cursor_pos - 1] != ' '))
             ){
 
                 if(ch == ' ' && buffer[cursor_pos] == ' '){
-                    setCursorPosition(++cursor_pos, 0);
+                    setCursorPosition(posx + (++cursor_pos), 0);
                     continue;
                 }
 
                 //TODO: think: оставлять ли последний char в buffer под '\0'?
                 if(last_char == buffer_size){
-                    setCursorPosition(0, 1);
+                    setCursorPosition(posx, 1);
                     puts("Too many letters!");
-                    setCursorPosition(cursor_pos, 0);
+                    setCursorPosition(posx + cursor_pos, 0);
                     continue;
                 }
 
@@ -326,7 +360,7 @@ char read_string(char enter_dir, char * dest, char buffer_size){
                 cursor_pos++;
                 last_char++;
 
-                setCursorPosition(cursor_pos, 0);
+                setCursorPosition(posx + cursor_pos, 0);
             }
         }
     }
@@ -337,21 +371,25 @@ exit:
     return ch;
 }
 
-char read_fixed_int(char enter_dir, char n_digits, int * dest){
+char read_fixed_int(char enter_dir, short posx, int * dest, char n_digits){
     
     #define buffer_size      9
     #define buffer_size_str "9"
+    #define format "d"
 
-    char real_buffer[buffer_size + sizeof('\0')];
+    char real_buffer[buffer_size + 1];
     char * buffer;
     unsigned char cursor_pos = 0;
+    if(enter_dir == ARROW_LEFT)
+        cursor_pos = n_digits - 1;
 
-    sprintf(real_buffer, "%0" buffer_size_str "d", *dest);
+    sprintf(real_buffer, "%0" buffer_size_str format, *dest);
+    real_buffer[buffer_size] = '\0';
     buffer = &real_buffer[buffer_size - n_digits];
 
-    setCursorPosition(0, 0);
+    setCursorPosition(posx, 0);
     printf("%s", buffer);
-    setCursorPosition(cursor_pos, 0);
+    setCursorPosition(posx + cursor_pos, 0);
 
     int ch;
     loop {
@@ -361,13 +399,13 @@ char read_fixed_int(char enter_dir, char n_digits, int * dest){
             if(ch == ARROW_LEFT){
                 if(cursor_pos != 0){
                     cursor_pos--;
-                    setCursorPosition(cursor_pos, 0);
+                    setCursorPosition(posx + cursor_pos, 0);
                 } else
                     goto exit;
             } else if(ch == ARROW_RIGHT){
                 if(cursor_pos != n_digits - 1){
                     cursor_pos++;
-                    setCursorPosition(cursor_pos, 0);
+                    setCursorPosition(posx + cursor_pos, 0);
                 } else
                     goto exit;
             }
@@ -382,20 +420,21 @@ char read_fixed_int(char enter_dir, char n_digits, int * dest){
                 if(cursor_pos == n_digits)
                     goto exit;
 
-                setCursorPosition(cursor_pos, 0);
+                setCursorPosition(posx + cursor_pos, 0);
             }
         }
     }
 
+exit:
+    sscanf(buffer, "%" format, dest);
+    return ch;
+
     #undef buffer_size
     #undef buffer_size_str
-
-exit:
-    sscanf(buffer, "%d", dest);
-    return ch;
+    #undef format
 }
 
-char read_fixed_date(char enter_dir, Date * dest){
+char read_fixed_date(char enter_dir, short posx, Date * dest){
     
     char buffer[11];
 
@@ -409,18 +448,20 @@ char read_fixed_date(char enter_dir, Date * dest){
     buffer[10] = '\0';
 
     unsigned char cursor_pos = 0;
+    if(enter_dir == ARROW_LEFT)
+        cursor_pos = 9;
 
-    setCursorPosition(0, 0);
+    setCursorPosition(posx, 0);
     printf("%s", buffer);
-    setCursorPosition(cursor_pos, 0);
+    setCursorPosition(posx + cursor_pos, 0);
 
     #define inc_cursor_pos() { \
         cursor_pos += 1 + (cursor_pos == 1 || cursor_pos == 4); \
-        setCursorPosition(cursor_pos, 0); \
+        setCursorPosition(posx + cursor_pos, 0); \
     }
     #define dec_cursor_pos() { \
         cursor_pos -= 1 + (cursor_pos == 3 || cursor_pos == 6); \
-        setCursorPosition(cursor_pos, 0); \
+        setCursorPosition(posx + cursor_pos, 0); \
     }
 
     int ch;
@@ -431,7 +472,6 @@ char read_fixed_date(char enter_dir, Date * dest){
             if(ch == ARROW_LEFT){
                 if(cursor_pos != 0){
                     dec_cursor_pos();
-                    
                 } else
                     goto exit;
             } else if(ch == ARROW_RIGHT){
@@ -450,12 +490,12 @@ char read_fixed_date(char enter_dir, Date * dest){
                 (cursor_pos == 4 && ch >= '0' && (ch <= '2' || (ch <= '9' && buffer[3] != '1'))) ||
                 (cursor_pos >= 6 && (ch >= '0' && ch <= '9'))
             ){
-
-                if(cursor_pos == 10)
-                    goto exit;
-
                 buffer[cursor_pos] = ch;
                 putchar(ch);
+                
+                if(cursor_pos == 9)
+                    goto exit;
+
                 inc_cursor_pos();
             }
         }
@@ -473,8 +513,38 @@ exit:
     return ch;
 }
 
-void print_date(Date date){
-    printf("%02hu.%02hu.%04hu", (unsigned short) date.d, (unsigned short) date.m, (unsigned short) date.y);
+char read_char(short posx, char * dest, char * values){
+    char n_values = (values++)[0];
+    char buffer = *dest;
+    
+    setCursorPosition(posx, 0);
+    putchar(buffer);
+    setCursorPosition(posx, 0);
+
+    int ch;
+    loop {
+        ch = _getch();
+        if(ch == 224){
+            ch = _getch();
+            if(ch == ARROW_LEFT || ch == ARROW_RIGHT)
+                goto exit;
+        } else {
+            if(ch == KEY_ENTER)
+                goto exit;
+            else {
+                for(unsigned char i = 0; i < n_values; i++)
+                    if(ch == values[i]){
+                        buffer = ch;
+                        putchar(ch);
+                        goto exit;
+                    }
+            }
+        }
+    }
+
+exit:
+    *dest = buffer;
+    return ch;
 }
 
 int main(){
@@ -488,7 +558,7 @@ int main(){
     
     ListElement temp = {
         data: {
-            name: "\x7testers",
+            full_name: "\x7testers",
             birth_date: {0}
         }
     };
@@ -510,37 +580,84 @@ int main(){
     clear_lines(0, buffer_info.dwSize.Y);
     //redraw_menu();
     //redraw_list();
-    int tmp = 31;
 
-    char ret;
+    setCursorPosition(0, 0);
+    print_element(last_readed);
+    _getch();
+
+    unsigned char current_field = 0;
+    char ret = ARROW_RIGHT;
+    char posx = 0;
+    loop {
+        Field field = form[current_field];
+        printf("\n%c%d", field.shortcut, posx);
+        char * offset = (char * ) last_readed + field.offset;
+        if(field.type == 'c')
+            ret = read_char(posx, offset, field.prop.values);
+        if(field.type == 's'){
+            printf("\nDEBUG: %d %d %u %d %d", ret, posx, offset, field.size, field.prop.allow_digits);
+            ret = read_string(ret, posx, offset, field.size, field.prop.allow_digits);
+        } else if(field.type == 'i')
+            ret = read_fixed_int(ret, posx, (int*) offset, field.size);
+        else if(field.type == 'd')
+            ret = read_fixed_date(ret, posx, (Date*) offset);
+
+        if(ret == ARROW_LEFT){
+            if(current_field != 0)
+                current_field--;
+            posx -= form[current_field].size + 1;
+        } else if(current_field == len(form) - 1){
+            break;
+        } else {
+            posx += form[current_field].size + 1;
+            current_field++;
+        }
+    }
+
+    //read_fixed_int(ARROW_RIGHT, 0, (unsigned short *)(((char *) last_readed) + form[1].offset), form[1].size);
+    //printf("%hu %hu\n", (int *)(((char *) last_readed) + form[1].offset), &last_readed->data.gradebook_number);
+
+    clear_lines(0, buffer_info.dwSize.Y);
+    setCursorPosition(0, 0);
+    print_element(last_readed);
+    
+    //char tmp = 'a';
+    //read_char(0, &tmp, "\3ozd");
+    //read_string(ARROW_RIGHT, 0, &temp.data.gender, 1);
+    /*
+    int tmp = 31;
+    char ret = ARROW_RIGHT;
 string:
-    ret = read_string(ARROW_RIGHT, last_readed->data.name, sizeof(last_readed->data.name) - 1);
+    ret = read_string(ret, 14, ((char *) last_readed) + form[2].offset, form[2].size, FALSE);
 date:
-    ret = read_fixed_date(ARROW_RIGHT, &last_readed->data.birth_date);
+    ret = read_fixed_date(ret, &last_readed->data.birth_date);
     if(ret == ARROW_LEFT)
         goto string;
 fixed_int:
-    ret = read_fixed_int(ARROW_RIGHT, 2, &tmp);
+    ret = read_fixed_int(ret, &tmp, 2);
     if(ret == ARROW_LEFT)
         goto date;
 
     putchar('\n');
-    puts(&last_readed->data.name[1]);
+    puts(&last_readed->data.full_name[1]);
     print_date(last_readed->data.birth_date);
     printf("\n%d\n", tmp);
+    */
     /*
-    if(ch == ARROW_UP)
-        scroll_list(UP);
-    else if(ch == ARROW_DOWN)
-        scroll_list(DOWN);
-    else if(ch == ARROW_LEFT)
-        scroll_menu(LEFT);
-    else if(ch == ARROW_RIGHT)
-        scroll_menu(RIGHT);
-    else if(ch == KEY_ENTER)
-        menu_items[selected_menu_item].func();
-    else
-        break;
+    loop {
+        if(ch == ARROW_UP)
+            scroll_list(UP);
+        else if(ch == ARROW_DOWN)
+            scroll_list(DOWN);
+        else if(ch == ARROW_LEFT)
+            scroll_menu(LEFT);
+        else if(ch == ARROW_RIGHT)
+            scroll_menu(RIGHT);
+        else if(ch == KEY_ENTER)
+            menu_items[selected_menu_item].func();
+        else
+            break;
+    }
     */
 
     //clear_lines(0, buffer_info.dwSize.Y);
