@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <windows.h>
+#include <conio.h>
+#include <string.h>
 
 #define loop while(1)
 #define new(T) malloc(sizeof(T))
@@ -10,6 +12,7 @@
 #define ARROW_LEFT 75
 #define ARROW_RIGHT 77
 #define KEY_ENTER 13
+#define KEY_BACKSPACE 8
 
 #define BACKGROUND_WHITE (BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED)
 
@@ -47,7 +50,8 @@ void repeat(short from_x, short from_y, DWORD _len, char c){
 }
 
 typedef struct {
-    char * name;
+    char name_len;
+    char name[32];
 } FileData;
 
 typedef struct list_element {
@@ -71,7 +75,8 @@ short list_last_line = 5;
 
 void add(char * name){
     ListElement * el = new(ListElement);
-    el->data.name = name;
+    //el->data.name = name;
+    strcpy(el->data.name, name);
     if(!head){
         el->PREV = NULL;
         head = el;
@@ -192,7 +197,7 @@ int menu_len = 0;
 void redraw_menu(){
     setCursorPosition( 0, 0);
     SetConsoleTextAttribute(stdout_handle, BACKGROUND_BLUE);
-    for(int i = 0; i < len(menu_items); i++){
+    for(unsigned char i = 0; i < len(menu_items); i++){
         if(i == selected_menu_item){
             SetConsoleTextAttribute(stdout_handle, BACKGROUND_GREEN);
             printf(" %s ", menu_items[i].name);
@@ -218,14 +223,107 @@ void scroll_menu(Horizontal dir){
     redraw_menu();
 }
 
+ListElement * last_readed;
+
+char read_name(char enter_dir){
+    
+    char * buffer = last_readed->data.name;
+    char buffer_size = len(last_readed->data.name);
+    short last_char = last_readed->data.name_len;
+    short cursor_pos = 0;
+    if(enter_dir == ARROW_LEFT)
+        cursor_pos = last_char;
+
+    printf("%s", buffer);
+    setCursorPosition(cursor_pos, 0);
+
+    int ch;
+    loop {
+        
+        ch = _getch();
+        //printf("DEBUG: %d\n", ch);
+        if(ch == 224){
+            ch = _getch();
+            //printf("DEBUG: %d\n", ch);
+            if(ch == ARROW_LEFT){
+                if(cursor_pos != 0){
+                    setCursorPosition(cursor_pos - 1, 0);
+                    cursor_pos--;
+                } else
+                    goto exit;
+            } else if(ch == ARROW_RIGHT){
+                if(cursor_pos != last_char){
+                    setCursorPosition(cursor_pos + 1, 0);
+                    cursor_pos++;
+                } else
+                    goto exit;
+            }
+        } else {
+            //printf("DEBUG: %c not 244\n", ch);
+            if(ch == KEY_ENTER)
+                goto exit;
+            else if(ch == KEY_BACKSPACE){
+                if(cursor_pos != 0){
+                    setCursorPosition(cursor_pos - 1, 0);
+                    if(cursor_pos == last_char)
+                        putchar(' ');
+                    else {
+                        for(int i = cursor_pos - 1; i < last_char - 1; i++)
+                            buffer[i] = buffer[i + 1];
+                        buffer[last_char - 1] = '\0';
+                        printf("%s ", &buffer[cursor_pos - 1]);
+                    }
+                    cursor_pos--;
+                    last_char--;
+                    setCursorPosition(cursor_pos, 0);
+                }
+            } else {
+                if(cursor_pos == last_char){
+                    buffer[cursor_pos] = ch;
+                    putchar(ch);
+                } else {
+                    for(int i = last_char; i > cursor_pos; i--)
+                        buffer[i] = buffer[i - 1];
+                    buffer[cursor_pos] = ch;
+                    printf("%s", &buffer[cursor_pos]);
+                }
+                cursor_pos++;
+                last_char++;
+
+                if(last_char == buffer_size)
+                    goto exit;
+
+                setCursorPosition(cursor_pos, 0);
+            }
+        }
+    }
+exit:
+    last_readed->data.name_len = last_char;
+    return ch;
+}
+
 int main(){
+
+    SetConsoleCP(1251);
+    SetConsoleOutputCP(1251);
 
     stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
     GetConsoleCursorInfo(stdout_handle, &cursor_info);
     GetConsoleScreenBufferInfo(stdout_handle, &buffer_info);
+    
+    ListElement temp = {
+        data: {
+            name: "testers",
+            name_len: len("testers") - 1
+        }
+    };
+    last_readed = &temp;
+    
+    /*
     for(char i = 0; i < len(menu_items); i++){
         menu_len += menu_items[i].name_len + 2; // + 2 spaces
     }
+    */
     
     add("one"); // one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one");
     add("two"); // two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two");
@@ -233,35 +331,30 @@ int main(){
     add("four"); // four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four");
     add("five"); // five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five");
     
-    setCursorVisibility(FALSE);
+    //setCursorVisibility(FALSE);
     clear_lines(0, buffer_info.dwSize.Y);
-    redraw_menu();
-    redraw_list();
+    //redraw_menu();
+    //redraw_list();
     
-    loop {
-        int ch = _getch();
-        //printf("DEBUG: %d\n", ch);
-        if(ch == 224){
-            ch = _getch();
-            //printf("DEBUG: %d\n", ch);
-        }
-        
-        if(ch == ARROW_UP)
-            scroll_list(UP);
-        else if(ch == ARROW_DOWN)
-            scroll_list(DOWN);
-        else if(ch == ARROW_LEFT)
-            scroll_menu(LEFT);
-        else if(ch == ARROW_RIGHT)
-            scroll_menu(RIGHT);
-        else if(ch == KEY_ENTER)
-            menu_items[selected_menu_item].func();
-        else
-            break;
-    }
+    read_name(ARROW_RIGHT);
+
+    /*
+    if(ch == ARROW_UP)
+        scroll_list(UP);
+    else if(ch == ARROW_DOWN)
+        scroll_list(DOWN);
+    else if(ch == ARROW_LEFT)
+        scroll_menu(LEFT);
+    else if(ch == ARROW_RIGHT)
+        scroll_menu(RIGHT);
+    else if(ch == KEY_ENTER)
+        menu_items[selected_menu_item].func();
+    else
+        break;
+    */
 
     clear_lines(0, buffer_info.dwSize.Y);
-    setCursorVisibility(TRUE);
+    //setCursorVisibility(TRUE);
 
     return 0;
 }

@@ -8,6 +8,8 @@
             "label": "C/C++: x86_64-w64-mingw32-gcc build active file on Linux",
             "command": "/usr/bin/x86_64-w64-mingw32-gcc",
             "args": [
+                "-Wall",
+                "-Wextra",
                 "-g",
                 "${file}",
                 "-o",
