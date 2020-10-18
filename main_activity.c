@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <windows.h>
 #include <conio.h>
-//#include <string.h>
+#include <string.h>
 
 #define loop while(1)
 #define new(T) malloc(sizeof(T))
@@ -50,7 +50,13 @@ void repeat(short from_x, short from_y, DWORD _len, char c){
 }
 
 typedef struct {
+    unsigned char d, m;
+    unsigned short y;
+} Date;
+
+typedef struct {
     char name[32];
+    Date birth_date;
 } FileData;
 
 typedef struct list_element {
@@ -232,8 +238,8 @@ typedef struct {
 char read_string(char enter_dir, char * dest, char buffer_size){
     
     char * buffer = &dest[1];
-    char last_char = dest[0];
-    short cursor_pos = 0;
+    unsigned char last_char = dest[0];
+    unsigned char cursor_pos = 0;
     if(enter_dir == ARROW_LEFT)
         cursor_pos = last_char;
 
@@ -330,6 +336,142 @@ exit:
     return ch;
 }
 
+char read_int(char enter_dir, char * max, int * dest){
+    char buffer_size = (max++)[0];
+    char buffer[10] = {0};
+    unsigned char cursor_pos = 0;
+    unsigned char first_char = 0;
+
+    sprintf(buffer, "%d", *dest);
+    char dest_len = strlen(buffer);
+    first_char = buffer_size - dest_len;
+    
+    for(unsigned char i = buffer_size - 1; i >= first_char; i--)
+        buffer[i] = buffer[i + first_char];
+    for(unsigned char i = 0; i < first_char; i++)
+        buffer[i] = '_';
+
+    printf("%s", buffer);
+    setCursorPosition(cursor_pos, 0);
+
+    int ch;
+    loop {
+        ch = _getch();
+        if(ch == 224){
+            ch = _getch();
+            if(ch == ARROW_LEFT){
+                if(cursor_pos != 0){
+                    setCursorPosition(cursor_pos - 1, 0);
+                    cursor_pos--;
+                } else
+                    goto exit;
+            } else if(ch == ARROW_RIGHT){
+                if(cursor_pos != buffer_size){
+                    setCursorPosition(cursor_pos + 1, 0);
+                    cursor_pos++;
+                } else
+                    goto exit;
+            }
+        } else {
+            if(ch == KEY_ENTER)
+                goto exit;
+            else if(ch == KEY_BACKSPACE){
+                if(cursor_pos != 0){
+                    setCursorPosition(cursor_pos - 1, 0);
+                    if(cursor_pos == buffer_size)
+                        putchar('0');
+                    else {
+                        for(int i = cursor_pos - 1; i < first_char - 1; i++)
+                            buffer[i] = buffer[i + 1];
+                        buffer[first_char - 1] = '\0';
+                        printf("%s ", &buffer[cursor_pos - 1]);
+                    }
+                    cursor_pos--;
+                    first_char--;
+                    setCursorPosition(cursor_pos, 0);
+                }
+            } else if(0){
+
+            }
+        }
+    }
+exit:
+    sscanf(buffer, "%d", dest);
+    return ch;
+}
+
+char read_date(char enter_dir, Date * dest){
+    
+    char buffer[11];
+
+    if(dest->d == 0)
+        buffer[0] = buffer[1] = '0';
+    if(dest->m == 0)
+        buffer[3] = buffer[4] = '0';
+    if(dest->y == 0)
+        buffer[6] = buffer[7] = buffer[8] = buffer[9] = '0';
+    buffer[2] = buffer[5] = '.';
+    buffer[10] = '\0';
+
+    unsigned char cursor_pos = 0;
+
+    printf("%s", buffer);
+    setCursorPosition(cursor_pos, 0);
+
+    #define inc_cursor_pos() (cursor_pos += 1 + (cursor_pos == 1 || cursor_pos == 4))
+    #define dec_cursor_pos() (cursor_pos -= 1 + (cursor_pos == 3 || cursor_pos == 6))
+
+    int ch;
+    loop {
+        ch = _getch();
+        if(ch == 224){
+            ch = _getch();
+            if(ch == ARROW_LEFT){
+                if(cursor_pos != 0){
+                    dec_cursor_pos();
+                    setCursorPosition(cursor_pos, 0);
+                } else
+                    goto exit;
+            } else if(ch == ARROW_RIGHT){
+                if(cursor_pos != 7){
+                    inc_cursor_pos();
+                    setCursorPosition(cursor_pos, 0);
+                } else
+                    goto exit;
+            }
+        } else {
+            if(ch == KEY_ENTER)
+                goto exit;
+            else if(
+                (cursor_pos == 0 && ch >= '0' && (ch <= '2' || (ch == '3' && buffer[1] <= '1'))) ||
+                (cursor_pos == 1 && ch >= '0' && (ch == '1' || (ch <= '9' && buffer[0] != '3'))) ||
+                (cursor_pos == 3 && (ch == '0' || (ch == '1' && buffer[4] <= '2'))) ||
+                (cursor_pos == 4 && ch >= '0' && (ch <= '2' || (ch <= '9' && buffer[3] != '1'))) ||
+                (cursor_pos >= 6 && (ch >= '0' && ch <= '9'))
+            ){
+
+                if(cursor_pos == 10)
+                    goto exit;
+
+                buffer[cursor_pos] = ch;
+                putchar(ch);
+                inc_cursor_pos();
+                setCursorPosition(cursor_pos, 0);
+            }
+        }
+    }
+    
+exit:
+    buffer[2] = buffer[5] = '\0';
+    unsigned short temp;
+    sscanf(&buffer[0], "%hu", &temp);
+    dest->d = temp;
+    sscanf(&buffer[3], "%hu", &temp);
+    dest->m = temp;
+    sscanf(&buffer[6], "%hu" , &dest->y);
+    return ch;
+}
+
 int main(){
 
     SetConsoleCP(1251);
@@ -341,7 +483,8 @@ int main(){
     
     ListElement temp = {
         data: {
-            name: "\x7testers"
+            name: "\x7testers",
+            birth_date: {0}
         }
     };
     last_readed = &temp;
@@ -363,8 +506,11 @@ int main(){
     //redraw_menu();
     //redraw_list();
     
-    read_string(ARROW_RIGHT, last_readed->data.name, sizeof(last_readed->data.name) - 1);
-
+    //read_string(ARROW_RIGHT, last_readed->data.name, sizeof(last_readed->data.name) - 1);
+    read_date(ARROW_RIGHT, &last_readed->data.birth_date);
+    printf("\n%02hu.%02hu.%04hu\n", (unsigned short) last_readed->data.birth_date.d, (unsigned short) last_readed->data.birth_date.m, (unsigned short) last_readed->data.birth_date.y);
+    //int temp = 31;
+    //read_int(ARROW_RIGHT, "\x2", &temp);
     /*
     if(ch == ARROW_UP)
         scroll_list(UP);
@@ -380,7 +526,7 @@ int main(){
         break;
     */
 
-    clear_lines(0, buffer_info.dwSize.Y);
+    //clear_lines(0, buffer_info.dwSize.Y);
     //setCursorVisibility(TRUE);
 
     return 0;
