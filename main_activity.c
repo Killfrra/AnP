@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <windows.h>
 #include <conio.h>
-#include <string.h>
+//#include <string.h>
 
 #define loop while(1)
 #define new(T) malloc(sizeof(T))
@@ -50,7 +50,6 @@ void repeat(short from_x, short from_y, DWORD _len, char c){
 }
 
 typedef struct {
-    char name_len;
     char name[32];
 } FileData;
 
@@ -73,6 +72,7 @@ int selected_element_pos_on_screen = -1;
 short list_first_line = 1;
 short list_last_line = 5;
 
+/*
 void add(char * name){
     ListElement * el = new(ListElement);
     //el->data.name = name;
@@ -92,7 +92,7 @@ void add(char * name){
     el->NEXT = NULL;
     tail = el;
 }
-
+*/
 void print(ListElement * el){
     printf("%s\n", el->data.name);
 }
@@ -225,11 +225,14 @@ void scroll_menu(Horizontal dir){
 
 ListElement * last_readed;
 
-char read_name(char enter_dir){
+typedef struct {
+    char offset, size;
+} Field;
+
+char read_string(char enter_dir, char * dest, char buffer_size){
     
-    char * buffer = last_readed->data.name;
-    char buffer_size = len(last_readed->data.name);
-    short last_char = last_readed->data.name_len;
+    char * buffer = &dest[1];
+    char last_char = dest[0];
     short cursor_pos = 0;
     if(enter_dir == ARROW_LEFT)
         cursor_pos = last_char;
@@ -257,6 +260,12 @@ char read_name(char enter_dir){
                     cursor_pos++;
                 } else
                     goto exit;
+            } else if(ch == ARROW_UP){
+                cursor_pos = 0;
+                setCursorPosition(0, 0);
+            } else if(ch == ARROW_DOWN){
+                cursor_pos = last_char;
+                setCursorPosition(cursor_pos, 0);
             }
         } else {
             //printf("DEBUG: %c not 244\n", ch);
@@ -277,7 +286,27 @@ char read_name(char enter_dir){
                     last_char--;
                     setCursorPosition(cursor_pos, 0);
                 }
-            } else {
+            } else if
+            (
+                    (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+                    (ch >= 'а' && ch <= 'я') || (ch >= 'А' && ch <= 'Я') ||
+                    // пробел не может быть первым, не может идти два раза подряд
+                    (ch == ' ' && (cursor_pos != 0 && buffer[cursor_pos - 1] != ' '))
+            ){
+
+                if(ch == ' ' && buffer[cursor_pos] == ' '){
+                    setCursorPosition(++cursor_pos, 0);
+                    continue;
+                }
+
+                //TODO: think: оставлять ли последний char в buffer под '\0'?
+                if(last_char == buffer_size){
+                    setCursorPosition(0, 1);
+                    puts("Too many letters!");
+                    setCursorPosition(cursor_pos, 0);
+                    continue;
+                }
+
                 if(cursor_pos == last_char){
                     buffer[cursor_pos] = ch;
                     putchar(ch);
@@ -290,15 +319,14 @@ char read_name(char enter_dir){
                 cursor_pos++;
                 last_char++;
 
-                if(last_char == buffer_size)
-                    goto exit;
-
                 setCursorPosition(cursor_pos, 0);
             }
         }
     }
 exit:
-    last_readed->data.name_len = last_char;
+    if(buffer[last_char - 1] == ' ')
+        buffer[--last_char] = '\0';
+    dest[0] = last_char;
     return ch;
 }
 
@@ -313,8 +341,7 @@ int main(){
     
     ListElement temp = {
         data: {
-            name: "testers",
-            name_len: len("testers") - 1
+            name: "\x7testers"
         }
     };
     last_readed = &temp;
@@ -324,19 +351,19 @@ int main(){
         menu_len += menu_items[i].name_len + 2; // + 2 spaces
     }
     */
-    
+    /*
     add("one"); // one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one");
     add("two"); // two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two");
     add("three"); // three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three");
     add("four"); // four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four");
     add("five"); // five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five");
-    
+    */
     //setCursorVisibility(FALSE);
     clear_lines(0, buffer_info.dwSize.Y);
     //redraw_menu();
     //redraw_list();
     
-    read_name(ARROW_RIGHT);
+    read_string(ARROW_RIGHT, last_readed->data.name, sizeof(last_readed->data.name) - 1);
 
     /*
     if(ch == ARROW_UP)
