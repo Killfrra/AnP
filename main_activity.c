@@ -243,6 +243,7 @@ char read_string(char enter_dir, char * dest, char buffer_size){
     if(enter_dir == ARROW_LEFT)
         cursor_pos = last_char;
 
+    setCursorPosition(0, 0);
     printf("%s", buffer);
     setCursorPosition(cursor_pos, 0);
 
@@ -336,21 +337,19 @@ exit:
     return ch;
 }
 
-char read_int(char enter_dir, char * max, int * dest){
-    char buffer_size = (max++)[0];
-    char buffer[10] = {0};
-    unsigned char cursor_pos = 0;
-    unsigned char first_char = 0;
-
-    sprintf(buffer, "%d", *dest);
-    char dest_len = strlen(buffer);
-    first_char = buffer_size - dest_len;
+char read_fixed_int(char enter_dir, char n_digits, int * dest){
     
-    for(unsigned char i = buffer_size - 1; i >= first_char; i--)
-        buffer[i] = buffer[i + first_char];
-    for(unsigned char i = 0; i < first_char; i++)
-        buffer[i] = '_';
+    #define buffer_size      9
+    #define buffer_size_str "9"
 
+    char real_buffer[buffer_size + sizeof('\0')];
+    char * buffer;
+    unsigned char cursor_pos = 0;
+
+    sprintf(real_buffer, "%0" buffer_size_str "d", *dest);
+    buffer = &real_buffer[buffer_size - n_digits];
+
+    setCursorPosition(0, 0);
     printf("%s", buffer);
     setCursorPosition(cursor_pos, 0);
 
@@ -361,46 +360,42 @@ char read_int(char enter_dir, char * max, int * dest){
             ch = _getch();
             if(ch == ARROW_LEFT){
                 if(cursor_pos != 0){
-                    setCursorPosition(cursor_pos - 1, 0);
                     cursor_pos--;
+                    setCursorPosition(cursor_pos, 0);
                 } else
                     goto exit;
             } else if(ch == ARROW_RIGHT){
-                if(cursor_pos != buffer_size){
-                    setCursorPosition(cursor_pos + 1, 0);
+                if(cursor_pos != n_digits - 1){
                     cursor_pos++;
+                    setCursorPosition(cursor_pos, 0);
                 } else
                     goto exit;
             }
         } else {
             if(ch == KEY_ENTER)
                 goto exit;
-            else if(ch == KEY_BACKSPACE){
-                if(cursor_pos != 0){
-                    setCursorPosition(cursor_pos - 1, 0);
-                    if(cursor_pos == buffer_size)
-                        putchar('0');
-                    else {
-                        for(int i = cursor_pos - 1; i < first_char - 1; i++)
-                            buffer[i] = buffer[i + 1];
-                        buffer[first_char - 1] = '\0';
-                        printf("%s ", &buffer[cursor_pos - 1]);
-                    }
-                    cursor_pos--;
-                    first_char--;
-                    setCursorPosition(cursor_pos, 0);
-                }
-            } else if(0){
+            else if(ch >= '0' && ch <= '9'){
+                buffer[cursor_pos] = ch;
+                putchar(ch);
+                cursor_pos++;
 
+                if(cursor_pos == n_digits)
+                    goto exit;
+
+                setCursorPosition(cursor_pos, 0);
             }
         }
     }
+
+    #undef buffer_size
+    #undef buffer_size_str
+
 exit:
     sscanf(buffer, "%d", dest);
     return ch;
 }
 
-char read_date(char enter_dir, Date * dest){
+char read_fixed_date(char enter_dir, Date * dest){
     
     char buffer[11];
 
@@ -415,11 +410,18 @@ char read_date(char enter_dir, Date * dest){
 
     unsigned char cursor_pos = 0;
 
+    setCursorPosition(0, 0);
     printf("%s", buffer);
     setCursorPosition(cursor_pos, 0);
 
-    #define inc_cursor_pos() (cursor_pos += 1 + (cursor_pos == 1 || cursor_pos == 4))
-    #define dec_cursor_pos() (cursor_pos -= 1 + (cursor_pos == 3 || cursor_pos == 6))
+    #define inc_cursor_pos() { \
+        cursor_pos += 1 + (cursor_pos == 1 || cursor_pos == 4); \
+        setCursorPosition(cursor_pos, 0); \
+    }
+    #define dec_cursor_pos() { \
+        cursor_pos -= 1 + (cursor_pos == 3 || cursor_pos == 6); \
+        setCursorPosition(cursor_pos, 0); \
+    }
 
     int ch;
     loop {
@@ -429,13 +431,12 @@ char read_date(char enter_dir, Date * dest){
             if(ch == ARROW_LEFT){
                 if(cursor_pos != 0){
                     dec_cursor_pos();
-                    setCursorPosition(cursor_pos, 0);
+                    
                 } else
                     goto exit;
             } else if(ch == ARROW_RIGHT){
-                if(cursor_pos != 7){
+                if(cursor_pos != 9){
                     inc_cursor_pos();
-                    setCursorPosition(cursor_pos, 0);
                 } else
                     goto exit;
             }
@@ -456,20 +457,24 @@ char read_date(char enter_dir, Date * dest){
                 buffer[cursor_pos] = ch;
                 putchar(ch);
                 inc_cursor_pos();
-                setCursorPosition(cursor_pos, 0);
             }
         }
     }
+
+    #undef inc_cursor_pos
+    #undef dec_cursor_pos
     
 exit:
     buffer[2] = buffer[5] = '\0';
     unsigned short temp;
-    sscanf(&buffer[0], "%hu", &temp);
-    dest->d = temp;
-    sscanf(&buffer[3], "%hu", &temp);
-    dest->m = temp;
+    sscanf(&buffer[0], "%hu", &temp); dest->d = temp;
+    sscanf(&buffer[3], "%hu", &temp); dest->m = temp;
     sscanf(&buffer[6], "%hu" , &dest->y);
     return ch;
+}
+
+void print_date(Date date){
+    printf("%02hu.%02hu.%04hu", (unsigned short) date.d, (unsigned short) date.m, (unsigned short) date.y);
 }
 
 int main(){
@@ -505,12 +510,24 @@ int main(){
     clear_lines(0, buffer_info.dwSize.Y);
     //redraw_menu();
     //redraw_list();
-    
-    //read_string(ARROW_RIGHT, last_readed->data.name, sizeof(last_readed->data.name) - 1);
-    read_date(ARROW_RIGHT, &last_readed->data.birth_date);
-    printf("\n%02hu.%02hu.%04hu\n", (unsigned short) last_readed->data.birth_date.d, (unsigned short) last_readed->data.birth_date.m, (unsigned short) last_readed->data.birth_date.y);
-    //int temp = 31;
-    //read_int(ARROW_RIGHT, "\x2", &temp);
+    int tmp = 31;
+
+    char ret;
+string:
+    ret = read_string(ARROW_RIGHT, last_readed->data.name, sizeof(last_readed->data.name) - 1);
+date:
+    ret = read_fixed_date(ARROW_RIGHT, &last_readed->data.birth_date);
+    if(ret == ARROW_LEFT)
+        goto string;
+fixed_int:
+    ret = read_fixed_int(ARROW_RIGHT, 2, &tmp);
+    if(ret == ARROW_LEFT)
+        goto date;
+
+    putchar('\n');
+    puts(&last_readed->data.name[1]);
+    print_date(last_readed->data.birth_date);
+    printf("\n%d\n", tmp);
     /*
     if(ch == ARROW_UP)
         scroll_list(UP);
