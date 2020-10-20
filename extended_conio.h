@@ -13,6 +13,7 @@
 #define KEY_ENTER 13
 #define KEY_ESC 27
 #define KEY_BACKSPACE 8
+#define KEY_TAB 9
 
 #define BACKGROUND_WHITE (BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED)
 
@@ -34,7 +35,7 @@ void clear_lines(short from, short to){
     DWORD written;
     FillConsoleOutputCharacter(stdout_handle, ' ', buffer_info.dwSize.X * to, coord, &written);
     FillConsoleOutputAttribute(stdout_handle, buffer_info.wAttributes, buffer_info.dwSize.X * to, coord, &written);
-    setCursorPosition(0, from);
+    //setCursorPosition(0, from);
 }
 
 void setColor(short from_x, short from_y, DWORD _len, WORD attr){

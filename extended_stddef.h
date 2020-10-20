@@ -9,16 +9,16 @@
 #define len(x)  (sizeof(x) / sizeof((x)[0]))
 
 typedef struct {
-    unsigned char d, m;
-    unsigned short y;
+    char d, m;
+    short y;
 } Date;
 
 void print_date(Date date){
     printf(
-        "%02hu.%02hu.%04hu",
-        (unsigned short) date.d,
-        (unsigned short) date.m,
-        (unsigned short) date.y
+        "%02u.%02u.%04u",
+        (short) date.d,
+        (short) date.m,
+        (short) date.y
     );
 }
 

@@ -1,11 +1,10 @@
+// Соглашение:
 // Элемент списка - это list_element или просто element
 // Элемент меню - это menu_item или просто item
 // Прокручивающийся список - это scroll
 // Редактирование элемента - editor
-// Функции именуются как "что_с_чем"
-// Переменные как "класс_переменная"
-// Private methods and fields prefixed with '_'
-// Если речь идёт о позиции, то об экранной
+// Переменные и методы именуются как "класс_название"
+// Если речь идёт о позиции (pos), то об экранной
 
 //#include <stdio.h>
 #include <windows.h>
@@ -16,8 +15,11 @@
 
 ListElement * last_readed;
 
+#define BOTTOM_LINE (buffer_info.dwSize.Y - 1)
+
 void menu_add(){
-    setCursorPosition(0, buffer_info.dwSize.Y - 1);
+    clear_lines(BOTTOM_LINE, BOTTOM_LINE);
+    setCursorPosition(0, BOTTOM_LINE);
     printf("Adding element. Enter to submit");
     
     char ret = draw_editor(last_readed);
@@ -33,14 +35,15 @@ void menu_add(){
 
 void menu_edit(){
     if(scroll_selected_element){
-        setCursorPosition(0, buffer_info.dwSize.Y - 1);
+        clear_lines(BOTTOM_LINE, BOTTOM_LINE);
+        setCursorPosition(0, BOTTOM_LINE);
         printf("Editing element. Changes are saved automatically");
         
         draw_editor(scroll_selected_element);
         //TODO: option to discard changes?
         redraw_scroll();
     } else {
-        setCursorPosition(0, buffer_info.dwSize.Y - 1);
+        setCursorPosition(0, BOTTOM_LINE);
         printf("Nothing to edit");
     }
 }
@@ -49,19 +52,24 @@ void menu_remove(){
     if(scroll_selected_element){
         ListElement * to_delete = scroll_selected_element;
         
-        // to_delete == scroll_first_element_on_screen
-        if(scroll_selected_element_pos == 0)
-            scroll_set_head(to_delete->NEXT);
-        else {
-            scroll_selected_element_pos--;
+        if(scroll_first_element_on_screen == head){
+            // to_delete == scroll_first_element_on_screen
+            if(scroll_selected_element_pos == 0)
+                scroll_set_head(to_delete->NEXT);
+            else {
+                scroll_selected_element_pos--;
+                scroll_selected_element = to_delete->PREV;
+            }
+        } else {
+            scroll_first_element_on_screen = scroll_first_element_on_screen->PREV;
             scroll_selected_element = to_delete->PREV;
         }
 
         list_remove(to_delete);
-        clear_lines(1, buffer_info.dwSize.Y - 1);
+        clear_lines(1, BOTTOM_LINE);
         redraw_scroll();
     } else {
-        setCursorPosition(0, buffer_info.dwSize.Y - 1);
+        setCursorPosition(0, BOTTOM_LINE);
         printf("Nothing to remove");
     }
 }
@@ -89,6 +97,7 @@ int main(){
     setCursorVisibility(FALSE);
     clear_lines(0, buffer_info.dwSize.Y);
     draw_menu();
+    scroll_last_line = BOTTOM_LINE - 1;
     draw_scroll();
 
     /*
@@ -102,7 +111,8 @@ int main(){
     */
     
     loop {
-        setCursorPosition(0, buffer_info.dwSize.Y - 1);
+        clear_lines(BOTTOM_LINE, BOTTOM_LINE);
+        setCursorPosition(0, BOTTOM_LINE);
         printf("Showing elements...");
 
         int ch = _getch();

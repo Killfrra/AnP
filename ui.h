@@ -8,7 +8,7 @@ ListElement * scroll_first_element_on_screen = NULL;
 ListElement * scroll_selected_element = NULL;
         int   scroll_selected_element_pos = -1;
 
-short scroll_first_line = 1;
+short scroll_first_line = 4;
 short scroll_last_line = 5;
 
 void scroll_set_head(ListElement * el){
@@ -24,7 +24,7 @@ void redraw_scroll(){
 
     if(head){
         ListElement * cur = scroll_first_element_on_screen;
-        for(int i = 0; cur && i < (scroll_last_line - scroll_first_line); i++){
+        for(int i = 0; cur && i < (scroll_last_line - scroll_first_line + 1); i++){
             if(i == scroll_selected_element_pos){
                 SetConsoleTextAttribute(stdout_handle, BACKGROUND_WHITE);
                 element_print(cur);
@@ -62,7 +62,7 @@ void scroll_scroll(Vertical dir){
             scroll_first_element_on_screen = scroll_first_element_on_screen->PREV;
             scroll_selected_element = scroll_first_element_on_screen;
             redraw_scroll();
-        } else if(dir == DOWN && scroll_selected_element_pos == scroll_last_line - scroll_first_line - 1){
+        } else if(dir == DOWN && scroll_selected_element_pos == scroll_last_line - scroll_first_line){
             scroll_first_element_on_screen = scroll_first_element_on_screen->NEXT;
             scroll_selected_element = scroll_selected_element->NEXT;
             redraw_scroll();

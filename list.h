@@ -5,11 +5,11 @@
 
 typedef struct {
     char group_name[6 + 1]; // 7
-    unsigned int gradebook_number; // 4
+    int gradebook_number; // 4
     char full_name[32];     // 32
     char gender, education_form; // 1 + 1
     Date birth_date, admission_date; // 4 + 4
-    unsigned short USE_score; // 2
+    short USE_score; // 2
 } FileData;
 
 typedef struct list_element {
@@ -78,16 +78,14 @@ void list_add(ListElement * el){
 
 void list_remove(ListElement * el){
     
-    if(!el) return;
-
-    if(!el->PREV){
+    if(el == head){
         head = el->NEXT;
         if(head)
             head->PREV = NULL;
     } else
         el->PREV->NEXT = el->NEXT;
 
-    if(!el->NEXT){
+    if(el == tail){
         tail = el->PREV;
         if(tail)
             tail->NEXT = NULL;
