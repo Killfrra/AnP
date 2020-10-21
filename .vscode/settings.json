@@ -2,6 +2,16 @@
     "files.associations": {
         "limits": "c",
         "*.tcc": "c",
-        "type_traits": "cpp"
+        "type_traits": "cpp",
+        "compare": "c",
+        "optional": "c",
+        "random": "c",
+        "memory": "c",
+        "new": "c",
+        "numeric": "c",
+        "ranges": "c",
+        "cmath": "c",
+        "tuple": "c",
+        "utility": "c"
     }
 }

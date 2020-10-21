@@ -24,8 +24,9 @@ void redraw_scroll(){
 
     if(head){
         ListElement * cur = scroll_first_element_on_screen;
-        for(int i = 0; cur && i < (scroll_last_line - scroll_first_line + 1); i++){
-            if(i == scroll_selected_element_pos){
+        int drawn = 0;
+        for(; cur && drawn < (scroll_last_line - scroll_first_line + 1); drawn++){
+            if(drawn == scroll_selected_element_pos){
                 SetConsoleTextAttribute(stdout_handle, BACKGROUND_WHITE);
                 element_print(cur);
                 SetConsoleTextAttribute(stdout_handle, buffer_info.wAttributes);
@@ -46,6 +47,8 @@ void redraw_scroll(){
             putchar('v');
         else
             putchar(' ');
+
+        clear_lines(scroll_first_line + drawn, scroll_last_line);
     
     } else {
         clear_lines(scroll_first_line, scroll_last_line);

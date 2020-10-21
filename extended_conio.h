@@ -94,7 +94,7 @@ char read_string(char enter_dir, short posx, char * dest, char buffer_size, char
             }
         } else {
             //printf("DEBUG: %c not 244\n", ch);
-            if(ch == KEY_ENTER || ch == KEY_ESC)
+            if(ch == KEY_ENTER || ch == KEY_ESC || ch == KEY_TAB)
                 goto exit;
             else if(ch == KEY_BACKSPACE){
                 if(cursor_pos != 0){
@@ -194,7 +194,7 @@ char read_fixed_int(char enter_dir, short posx, unsigned int * dest, unsigned ch
                     goto exit;
             }
         } else {
-            if(ch == KEY_ENTER || ch == KEY_ESC)
+            if(ch == KEY_ENTER || ch == KEY_ESC || ch == KEY_TAB)
                 goto exit;
             else if(ch >= '0' && ch <= '9'){
                 buffer[cursor_pos] = ch;
@@ -271,7 +271,7 @@ char read_fixed_date(char enter_dir, short posx, Date * dest){
                     goto exit;
             }
         } else {
-            if(ch == KEY_ENTER || ch == KEY_ESC)
+            if(ch == KEY_ENTER || ch == KEY_ESC || ch == KEY_TAB)
                 goto exit;
             else if(
                 (cursor_pos == 0 && ch >= '0' && (ch <= '2' || (ch == '3' && buffer[1] <= '1'))) ||
@@ -318,7 +318,7 @@ char read_char(short posx, char * dest, char * values){
             if(ch == ARROW_LEFT || ch == ARROW_RIGHT)
                 goto exit;
         } else {
-            if(ch == KEY_ENTER || ch == KEY_ESC)
+            if(ch == KEY_ENTER || ch == KEY_ESC || ch == KEY_TAB)
                 goto exit;
             else {
                 for(unsigned char i = 0; i < n_values; i++)
