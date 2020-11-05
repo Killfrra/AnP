@@ -7,6 +7,8 @@
 #define loop while(1)
 #define new(T) malloc(sizeof(T))
 #define len(x)  (sizeof(x) / sizeof((x)[0]))
+#define TRUE 1
+#define FALSE 0
 
 typedef struct {
     char d, m;

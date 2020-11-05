@@ -74,6 +74,12 @@ void menu_remove(){
     }
 }
 
+void menu_sort(){
+    merge_sort();
+    scroll_set_head(head);
+    redraw_scroll();
+}
+
 int main(){
 
     SetConsoleCP(1251);
