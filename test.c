@@ -15,8 +15,9 @@ ListElement l[] = {
     { 3, &l[2], &l[4] },
     { 0, &l[3], &l[5] },
     { 5, &l[4], &l[6] },
-    { 7, &l[5], NULL  },
-    //{ 2, &l[5], NULL  }
+    { 7, &l[5], &l[7] },
+    { 2, &l[5], &l[8] },
+    { 0, &l[6], &l[9] }
 };
 
 int list_len = len(l);
@@ -41,39 +42,27 @@ typedef struct {
 } Cut;
 
 Cut merge(Cut l1, Cut l2){
+    #define l (&l1)
     Cut cut = { .next = l2.next };
-    ListElement * cur, * cur1, * cur2;
-    if(l1.first->val < l2.first->val){
-        cut.first = cur = l1.first;
-        cur1 = l1.first->next;
-        cur2 = l2.first;
-    } else {
-        cut.first = cur = l2.first;
-        cur1 = l1.first;
-        cur2 = l2.first->next;
-    }
-
+    ListElement * cur, * cur_[2];
+    
+    char min = l1.first->val >= l2.first->val;
+    cut.first = cur = l[min].first;
+    cur_[min] = cur->next;
+    cur_[!min] = l[!min].first;
+    
     while(1){
-        if(cur1->val < cur2->val){
-            connect(cur, cur1);
-            cur = cur1;
-            if(cur == l1.last){
-                connect(cur, cur2);
-                cut.last = l2.last;
-                return cut;
-            } else
-                cur1 = cur1->next;
-        } else {
-            connect(cur, cur2);
-            cur = cur2;
-            if(cur == l2.last){
-                connect(cur, cur1);
-                cut.last = l1.last;
-                return cut;
-            } else
-                cur2 = cur2->next;
-        }
+        char min = cur_[0]->val >= cur_[1]->val;
+        connect(cur, cur_[min]);
+        cur = cur_[min];
+        if(cur == l[min].last){
+            connect(cur, cur_[!min]);
+            cut.last = l[!min].last;
+            return cut;
+        } else
+            cur_[min] = cur->next;
     }
+    #undef l
 }
 
 Cut recursion(ListElement * first, int len){
