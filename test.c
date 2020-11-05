@@ -9,60 +9,109 @@ typedef struct list_element {
 ListElement l[] = {
     { 1,  NULL, &l[1] },
     { 8, &l[0], &l[2] },
-    { 3, &l[1], &l[3] },
-    { 4, &l[2], &l[4] },
+    { 4, &l[1], &l[3] },
+    { 3, &l[2], &l[4] },
     { 0, &l[3], &l[5] },
     { 5, &l[4], &l[6] },
-    { 7, &l[5], NULL  }
+    { 7, &l[5], &l[7] },
+    { 2, &l[6], NULL  }
 };
 
-int l_len = 7;
-
-int a[] = { 1, 8, 3, 4, 0, 5, 7 };
+int list_len = len(l);
+ListElement * head = &l[0];
+ListElement * tail = &l[len(l) - 1];
 
 void print(){
-    for(int i = 0; i < len(a); i++)
-        printf("%d ", (int) a[i]);
+    int i = 0;
+    for(ListElement * cur = head; cur; cur = cur->next, i++){
+        if(i == list_len){
+            puts("...");
+            return;
+        }
+        printf("%d ", cur->val);
+    }
     putchar('\n');
 }
 
-void recursion(int from, int to){
+typedef struct {
+    ListElement * first, * last;
+    ListElement * next; // указатель на начало следующего отрезка
+} Cut;
+
+Cut merge(Cut l1, Cut l2){
+    Cut cut = { .next = l2.next };
+    ListElement * cur;
+    if(l1.first->val < l2.first->val){
+        cut.first = l1.first;
+        cur = l2.first;        
+    } else {
+        cut.first = l2.first;
+        cur = l1.first;
+    }
+
+    ListElement * cur1 = l1.first->next;
+    ListElement * cur2 = l2.first->next;
+
+    cut.first->next = cur;
+    cur->prev = cut.first;
+
+    while(1){
+        if(cur1->val < cur2->val){
+            cur->next = cur1;
+            cur1->prev = cur;
+            cur = cur1;
+            if(cur == l1.last){
+                cur->next = cur2;
+                cur2->prev = cur;
+                cut.last = l2.last;
+                return cut;
+            } else
+                cur1 = cur1->next;
+        } else {
+            cur->next = cur2;
+            cur2->prev = cur;
+            cur = cur2;
+            if(cur == l2.last){
+                cur->next = cur1;
+                cur1->prev = cur;
+                cut.last = l1.last;
+                return cut;
+            } else
+                cur2 = cur2->next;
+        }
+    }
+}
+
+Cut recursion(ListElement * first, int len){
     //printf("r %i %i\n", from, to);
-    int _len = to - from + 1;
-    if(_len > 2){
-        recursion(from, _len / 2 - 1);
-        recursion(_len / 2, to);
-    } else
-        printf("%i %i %i\n", a[from], a[from + 1], a[from + 2]);
+    if(len > 2){
+        int half_len = len / 2;
+        Cut cut1 = recursion(first, half_len);
+        Cut cut2 = recursion(cut1.next, len - half_len);
+        return merge(cut1, cut2);
+    } else if(len == 1){
+        Cut cut = { first, first, first->next };
+        return cut;
+    } else {
+        Cut cut = { first, first->next };
+        cut.next = cut.last->next;
+        if(cut.first->val > cut.last->val){
+            ListElement * tmp = cut.first;
+            cut.first = cut.last;
+            cut.last = tmp;
+
+            cut.first->next = cut.last;
+            cut.last->prev = cut.first;
+        }
+        return cut;
+    }
 }
 
 int main(){
 
     print();
-    recursion(0, len(a) - 1);
-
-    /*
-    float median = 0;
-    for(int i = 0; i < len(a); i++)
-        median += a[i];
-    median /= len(a);
-
-    printf("median: %f\n", median);
-
-    int i = 0, j = len(a) - 1;
-    for(; i < j; i++)
-        if(a[i] > median){
-            while(a[j] >= median)
-                j--;
-            int tmp = a[i];
-            a[i] = a[j];
-            a[j] = tmp;
-            j--;
-        }
-
+    recursion(head, list_len);
     print();
-    printf("%i %i\n", (int) i, (int) j);
-    */
 
     return 0;
 }
