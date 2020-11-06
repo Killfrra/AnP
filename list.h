@@ -167,6 +167,7 @@ Cut recursion(ListElement * first, int len){
     }
 }
 
+//WARN: list_len should be >= 2
 void merge_sort(){
     Cut cut = recursion(head, list_len);
     head = cut.first;

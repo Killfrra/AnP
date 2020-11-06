@@ -75,15 +75,26 @@ void menu_remove(){
 }
 
 void menu_sort(){
-    merge_sort();
-    scroll_set_head(head);
-    redraw_scroll();
+    if(list_len > 2){
+        merge_sort();
+        //scroll_set_head(head);
+        ListElement * cur = scroll_selected_element;
+        for(unsigned int i = 0; i < scroll_selected_element_pos; i++){
+            if(!cur->PREV){
+                scroll_selected_element_pos = i;
+                break;
+            } else
+                cur = cur->PREV;
+        }
+        scroll_first_element_on_screen = cur;
+        redraw_scroll();
+    }
 }
 
 int main(){
 
-    SetConsoleCP(1251);
-    SetConsoleOutputCP(1251);
+    //SetConsoleCP(866);
+    //SetConsoleOutputCP(866);
 
     stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
     GetConsoleCursorInfo(stdout_handle, &cursor_info);
@@ -91,34 +102,16 @@ int main(){
     
     last_readed = new(ListElement);
     element_zerofill(last_readed);
-
-    /*
-    add("one"); // one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one one");
-    add("two"); // two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two two");
-    add("three"); // three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three three");
-    add("four"); // four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four four");
-    add("five"); // five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five five");
-    */
     
     setCursorVisibility(FALSE);
     clear_lines(0, buffer_info.dwSize.Y);
     draw_menu();
     scroll_last_line = BOTTOM_LINE - 1;
     draw_scroll();
-
-    /*
-    setCursorPosition(0, 1);
-    print_element(last_readed);
-    
-    draw_editor(last_readed);
-    
-    setCursorPosition(0, 1);
-    print_element(last_readed);
-    */
     
     loop {
-        setCursorPosition(0, 1);
-        puts(" ?????? ??????? ??? ????? ???????? ??????????? ??? ");
+        //setCursorPosition(0, 1);
+        //puts(" ? ?????, ? ?????? ? ???? ");
 
         clear_lines(BOTTOM_LINE, BOTTOM_LINE);
         setCursorPosition(0, BOTTOM_LINE);

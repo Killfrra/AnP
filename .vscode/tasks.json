@@ -19,10 +19,7 @@
             "problemMatcher": [
                 "$gcc"
             ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
+            "group": "build"
         },
         {
             "type": "shell",
@@ -32,8 +29,6 @@
                 "-Wall",
                 "-Wextra",
                 "-Wpadded",
-                //"-Wno-unused-label",
-                //"-Wno-missing-braces",
                 "-Wno-missing-field-initializers",
                 "-g",
                 "${file}",
@@ -46,7 +41,10 @@
             "problemMatcher": [
                 "$gcc"
             ],
-            "group": "build"
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         },
         {
             "type": "shell",
