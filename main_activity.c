@@ -97,8 +97,15 @@ int main(){
     //SetConsoleOutputCP(866);
 
     stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    //TODO: ??????, ??? ? ? ????? ??????
+    SMALL_RECT rect = { 32, 32, 128, 32 };
+    SetConsoleWindowInfo(stdout_handle, TRUE, &rect);
     GetConsoleCursorInfo(stdout_handle, &cursor_info);
     GetConsoleScreenBufferInfo(stdout_handle, &buffer_info);
+    buffer_info.dwSize.X = buffer_info.srWindow.Right - buffer_info.srWindow.Left + 1;
+    buffer_info.dwSize.Y = buffer_info.srWindow.Bottom - buffer_info.srWindow.Top + 1;
+    SetConsoleScreenBufferSize(stdout_handle, buffer_info.dwSize);
     
     last_readed = new(ListElement);
     element_zerofill(last_readed);
