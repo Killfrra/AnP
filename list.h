@@ -6,10 +6,12 @@
 #include "extended_stddef.h"
 #include "extended_conio.h"
 
+#define FILEDATA_NAME_LEN 32
+
 typedef struct {
     char group_name[6 + 1]; // 7
     int gradebook_number; // 4
-    char full_name[32];     // 32
+    char full_name[FILEDATA_NAME_LEN]; // 32
     char gender, education_form; // 1 + 1
     Date birth_date, admission_date; // 4 + 4
     short USE_score; // 2
@@ -20,11 +22,11 @@ typedef struct list_element {
     struct list_element * link[4];
 } ListElement;
 
-enum { SHOW = 0, SEARCH = 2 } link_layer = SHOW;
+enum { SHOW = 0, SEARCH = 1 } link_layer = SHOW;
 
-#define DIR(d) link[d + link_layer]
+#define DIR(d) link[d * 2 + link_layer]
 #define PREV   link[0 + link_layer]
-#define NEXT   link[1 + link_layer]
+#define NEXT   link[2 + link_layer]
 #define VAL    data.USE_score       //TODO: compare_by_val(a, b)
 
 #define connect(a, b)  { a->NEXT = b; b->PREV = a; }
@@ -39,14 +41,14 @@ char read_fixed_short(char enter_dir, short posx, unsigned short * dest, Field f
 */
 
 Field list_element_fields[] = {
-	{ read_string      , "Шифр группы", offsetof(FileData, group_name), 6, { allow_digits: TRUE }},
-	{ read_fixed_int   , "Номер зачетной книжки", offsetof(FileData, gradebook_number), 6 },
-	{ read_char        , "Пол", offsetof(FileData, gender), 1, { values: "\2mf" } },
-	{ read_char        , "Форма обучения", offsetof(FileData, education_form), 1, { values: "\3ozd" } },
-	{ read_fixed_date  , "Дата рождения", offsetof(FileData, birth_date), 10 },
-	{ read_fixed_date  , "Дата поступления", offsetof(FileData, admission_date), 10 },
-	{ read_fixed_short , "Балл ЕГЭ", offsetof(FileData, USE_score), 3},
-    { read_string      , "ФИО", offsetof(FileData, full_name), sizeof(((FileData*) 0)->full_name), { allow_digits: FALSE } }
+	{ read_string      , "Шифр группы", offsetof(FileData, group_name), 6, { allow_digits: TRUE }, .size = 6},
+	{ read_fixed_int   , "Номер зачетной книжки", offsetof(FileData, gradebook_number), 6, .size = sizeof(int) },
+	{ read_char        , "Пол", offsetof(FileData, gender), 1, { values: "\2mf" }, .size = 1 },
+	{ read_char        , "Форма обучения", offsetof(FileData, education_form), 1, { values: "\3ozd" }, .size = 1 },
+	{ read_fixed_date  , "Дата рождения", offsetof(FileData, birth_date), 10, .size = sizeof(Date) },
+	{ read_fixed_date  , "Дата поступления", offsetof(FileData, admission_date), 10, .size = sizeof(Date) },
+	{ read_fixed_short , "Балл ЕГЭ", offsetof(FileData, USE_score), 3, .size = sizeof(short) },
+    { read_string      , "ФИО", offsetof(FileData, full_name), FILEDATA_NAME_LEN, { allow_digits: FALSE }, .size = FILEDATA_NAME_LEN }
 };
 
 void element_print(ListElement * cur){
@@ -63,43 +65,49 @@ void element_zerofill(ListElement * elem){
     elem->data.gender = elem->data.education_form = ' ';
 }
 
-ListElement * head = NULL; //TODO: head/tail for SEARCH layer
-ListElement * tail = NULL;
-unsigned int list_len = 0;
+ListElement * heads[2] = { 0 };
+ListElement * tails[2] = { 0 };
+#define HEAD heads[link_layer]
+#define TAIL tails[link_layer]
+
+unsigned int list_lengths[2] = { 0 };
+#define list_len list_lengths[link_layer]
 
 void list_add(ListElement * el){
     
-    if(!head){
-        head = el;
-        head->PREV = NULL;  
+    if(!HEAD){
+        HEAD = el;
+        HEAD->PREV = NULL;  
     } else {
-        tail->NEXT = el;
-        el->PREV = tail;
+        TAIL->NEXT = el;
+        el->PREV = TAIL;
     }
-    tail = el;
-    tail->NEXT = NULL;
+    TAIL = el;
+    TAIL->NEXT = NULL;
 
     list_len++;
 }
 
 void list_remove(ListElement * el){
     
-    if(el == head){
-        head = el->NEXT;
-        if(head)
-            head->PREV = NULL;
+    if(el == HEAD){
+        HEAD = el->NEXT;
+        if(HEAD)
+            HEAD->PREV = NULL;
     } else
         el->PREV->NEXT = el->NEXT;
 
-    if(el == tail){
-        tail = el->PREV;
-        if(tail)
-            tail->NEXT = NULL;
+    if(el == TAIL){
+        TAIL = el->PREV;
+        if(TAIL)
+            TAIL->NEXT = NULL;
     } else
         el->NEXT->PREV = el->PREV;
 
     list_len--;
-    free(el);
+    
+    if(link_layer == SHOW)
+        free(el);
 }
 
 typedef struct {
@@ -166,11 +174,11 @@ Cut recursion(ListElement * first, int len){
 
 //WARN: list_len should be >= 2
 void merge_sort(){
-    Cut cut = recursion(head, list_len);
-    head = cut.first;
-    tail = cut.last;
-    head->PREV = NULL;
-    tail->NEXT = NULL;
+    Cut cut = recursion(HEAD, list_len);
+    HEAD = cut.first;
+    TAIL = cut.last;
+    HEAD->PREV = NULL;
+    TAIL->NEXT = NULL;
 }
 /*
 int main(){
@@ -183,8 +191,8 @@ int main(){
         { { .USE_score = 349 }, { &list[3], &list[5] } },
         { { .USE_score = 250 }, { &list[4], NULL     } }
     };
-    head = list;
-    tail = &list[len(list) - 1];
+    HEAD = list;
+    TAIL = &list[len(list) - 1];
     list_len = len(list);
     }
 
@@ -195,10 +203,10 @@ int main(){
         list_add(last_readed);
     }
 
-    for(ListElement * cur = head; cur; cur = cur->NEXT)
+    for(ListElement * cur = HEAD; cur; cur = cur->NEXT)
         element_print(cur);
     merge_sort();
-    for(ListElement * cur = head; cur; cur = cur->NEXT)
+    for(ListElement * cur = HEAD; cur; cur = cur->NEXT)
         element_print(cur);
     return 0;
 }

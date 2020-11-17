@@ -68,21 +68,22 @@ void repeat(short from_x, short from_y, DWORD _len, char c){
 }
 
 typedef struct field_struct {
-    char (* read_func)(char enter_dir, short posx, void * dest, struct field_struct field);
-    char * name;
-    size_t offset;
-    char size;
+    char (* read_func)(char enter_dir, short posx, void * dest, struct field_struct field); // 8
+    char * name; // 8
+    size_t offset; // 8
+    char len; // 1
     union {
-        char values[5];
-        char allow_digits;
+        char values[5]; // 5
+        char allow_digits; // 1
     } prop;
+    char size; //TODO: reorder
 } Field;
 
 #define EDITOR_POSY	2 //TODO: remove and get it from ui.h
 
 char read_string(char enter_dir, short posx, char * dest, Field field){
     
-    char buffer_size = field.size;
+    char buffer_size = field.len;
     char allow_digits = field.prop.allow_digits;
 
     char * buffer = &dest[1];
@@ -189,7 +190,7 @@ exit:
 
 char read_fixed_int(char enter_dir, short posx, unsigned int * dest, Field field){
 
-    unsigned char n_digits = field.size;
+    unsigned char n_digits = field.len;
     
     char buffer[11];
     unsigned char cursor_pos = 0;

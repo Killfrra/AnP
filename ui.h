@@ -9,13 +9,14 @@
 
 #include "extended_conio.h"
 #include "extended_stddef.h"
+#include "quotes.h"
 
 ListElement * scroll_first_element_on_screen = NULL;
 ListElement * scroll_selected_element = NULL;
-        int   scroll_selected_element_pos = -1;
+unsigned int  scroll_selected_element_pos = 0;
 
-short scroll_first_line = SCROLL_POSY;
-short scroll_last_line = 5;
+unsigned short scroll_first_line = SCROLL_POSY;
+unsigned short scroll_last_line = 5;
 
 void scroll_set_head(ListElement * el){
     scroll_first_element_on_screen = el;
@@ -28,7 +29,7 @@ void redraw_scroll(){
 
     setCursorPosition(0, scroll_first_line); //clear_lines(0, BUFFER_Y);
 
-    if(head){
+    if(HEAD){
         ListElement * cur = scroll_first_element_on_screen;
         int drawn = 0;
         for(; cur && drawn < (scroll_last_line - scroll_first_line + 1); drawn++){
@@ -43,7 +44,7 @@ void redraw_scroll(){
         setColor(0, scroll_selected_element_pos + scroll_first_line, buffer_info.dwSize.X - 1, BACKGROUND_WHITE);
         
         setCursorPosition(buffer_info.dwSize.X - 1, scroll_first_line);
-        if(scroll_first_element_on_screen != head)
+        if(scroll_first_element_on_screen != HEAD)
             putchar('^');
         else
             putchar(' ');
@@ -65,7 +66,7 @@ void redraw_scroll(){
 
 typedef enum { UP, DOWN } Vertical;
 void scroll_scroll(Vertical dir){
-    if(!head) return;
+    if(!HEAD) return;
     if(scroll_selected_element->DIR(dir)){
 
         if(dir == UP && scroll_selected_element_pos == 0){
@@ -109,7 +110,7 @@ char draw_editor(ListElement * elem){
         if(ret == ARROW_LEFT){
             if(current_field != 0){
                 current_field--;
-                posx -= list_element_fields[current_field].size + 1;
+                posx -= list_element_fields[current_field].len + 1;
             }
         } else if(ret == KEY_ESC || ret == KEY_ENTER)
             break;
@@ -120,7 +121,7 @@ char draw_editor(ListElement * elem){
             } else
                 break;
         } else {
-            posx += list_element_fields[current_field].size + 1;
+            posx += list_element_fields[current_field].len + 1;
             current_field++;
         }
     }
@@ -144,6 +145,7 @@ void menu_remove();
 void menu_edit();
 void menu_sort();
 void menu_search();
+void menu_close_search();
 
 #define item(name, func) { name, len(name) - 1, func }
 MenuItem menu_items[] = {
@@ -155,7 +157,8 @@ MenuItem menu_items[] = {
     item("Export", empty_func),
     item("Import", empty_func),
     item("Save", empty_func),
-    item("Process", empty_func)
+    item("Process", empty_func),
+    item(" X ", menu_close_search)
 };
 
 signed char selected_menu_item = 0;
@@ -163,7 +166,8 @@ int menu_len = 0;
 void redraw_menu(){
     setCursorPosition( 0, 0);
     SetConsoleTextAttribute(stdout_handle, BACKGROUND_BLUE);
-    for(unsigned char i = 0; i < len(menu_items); i++){
+    unsigned char menu_len = len(menu_items) - (link_layer == SHOW);
+    for(unsigned char i = 0; i < menu_len; i++){
         if(i == selected_menu_item){
             SetConsoleTextAttribute(stdout_handle, BACKGROUND_GREEN);
             printf(" %s ", menu_items[i].name);
@@ -182,10 +186,11 @@ void draw_menu(){
 typedef enum { LEFT, RIGHT } Horizontal;
 void scroll_menu(Horizontal dir){
 
+    unsigned char menu_len = len(menu_items) - (link_layer == SHOW);
     selected_menu_item += dir * 2 - 1;
     if(selected_menu_item < 0)
-        selected_menu_item = len(menu_items) - 1;
-    else if(selected_menu_item == len(menu_items))
+        selected_menu_item = menu_len - 1;
+    else if(selected_menu_item == menu_len)
         selected_menu_item = 0;
     
     redraw_menu();

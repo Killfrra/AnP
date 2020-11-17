@@ -1,3 +1,6 @@
+#ifndef QUOTES_ENGINE
+#define QUOTES_ENGINE
+
 #include <stdio.h>
 
 #define roll(i, len) (i = (i + 1) % len)
@@ -86,6 +89,7 @@ const char * const exit_quotes[] = {
 
 #define event_quote(event) \
 void event##_quote(){ \
+    setCursorPosition(0, 1); \
     puts(event##_quotes[quotes_state.event]); \
     roll(quotes_state.event, len(event##_quotes)); \
 }
@@ -95,3 +99,5 @@ event_quote(exit)
 event_quote(edit)
 event_quote(mistake)
 event_quote(remove)
+
+#endif
