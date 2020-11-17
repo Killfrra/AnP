@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "extended_stddef.h"
+#include "extended_conio.h"
 
 typedef struct {
     char group_name[6 + 1]; // 7
@@ -29,27 +30,23 @@ enum { SHOW = 0, SEARCH = 2 } link_layer = SHOW;
 #define connect(a, b)  { a->NEXT = b; b->PREV = a; }
 #define connect3(a, b, c) { connect(a, b); connect(b, c); }
 
-typedef struct {
-    char shortcut;
-    char * name;
-    char type;
-    size_t offset;
-    char size;
-    union {
-        char values[5];
-        char allow_digits;
-    } prop;
-} Field;
+/*
+char read_string(char enter_dir, short posx, char * dest, Field field);
+char read_fixed_int(char enter_dir, short posx, unsigned int * dest, Field field);
+char read_char(char enter_dir, short posx, char * dest, Field field);
+char read_fixed_date(char enter_dir, short posx, Date * dest, Field field);
+char read_fixed_short(char enter_dir, short posx, unsigned short * dest, Field field);
+*/
 
 Field list_element_fields[] = {
-	{ 'c', "Шифр группы", 's', offsetof(FileData, group_name), 6, { allow_digits: TRUE }},
-	{ 'i', "Номер зачетной книжки", 'i', offsetof(FileData, gradebook_number), 6 },
-	{ 'g', "Пол", 'c', offsetof(FileData, gender), 1, { values: "\2mf" } },
-	{ 'f', "Форма обучения", 'c', offsetof(FileData, education_form), 1, { values: "\3ozd" } },
-	{ 'b', "Дата рождения", 'd', offsetof(FileData, birth_date), 10 },
-	{ 'e', "Дата поступления", 'd', offsetof(FileData, admission_date), 10 },
-	{ 's', "Балл ЕГЭ", 'h', offsetof(FileData, USE_score), 3},
-    { 'n', "ФИО", 's', offsetof(FileData, full_name), sizeof(((FileData*) 0)->full_name), { allow_digits: FALSE } }
+	{ read_string      , "Шифр группы", offsetof(FileData, group_name), 6, { allow_digits: TRUE }},
+	{ read_fixed_int   , "Номер зачетной книжки", offsetof(FileData, gradebook_number), 6 },
+	{ read_char        , "Пол", offsetof(FileData, gender), 1, { values: "\2mf" } },
+	{ read_char        , "Форма обучения", offsetof(FileData, education_form), 1, { values: "\3ozd" } },
+	{ read_fixed_date  , "Дата рождения", offsetof(FileData, birth_date), 10 },
+	{ read_fixed_date  , "Дата поступления", offsetof(FileData, admission_date), 10 },
+	{ read_fixed_short , "Балл ЕГЭ", offsetof(FileData, USE_score), 3},
+    { read_string      , "ФИО", offsetof(FileData, full_name), sizeof(((FileData*) 0)->full_name), { allow_digits: FALSE } }
 };
 
 void element_print(ListElement * cur){

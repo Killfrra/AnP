@@ -75,7 +75,7 @@ void menu_remove(){
 }
 
 void menu_sort(){
-    if(list_len > 2){
+    if(list_len > 1){
         merge_sort();
         //scroll_set_head(head);
         ListElement * cur = scroll_selected_element;
@@ -91,6 +91,49 @@ void menu_sort(){
     }
 }
 
+unsigned char search_by_field = 0;
+void menu_search(){
+    redraw_header(search_by_field);
+    loop {
+        int ch = _getch();
+        if(ch == 224){
+            ch = _getch();
+            if(ch == ARROW_RIGHT){
+                search_by_field = (search_by_field + 1) % len(list_element_fields);
+                redraw_header(search_by_field);
+            } else if(ch == ARROW_LEFT){
+                search_by_field = (search_by_field - 1) % len(list_element_fields);
+                redraw_header(search_by_field);
+            }
+        } else if(ch == KEY_ENTER)
+            break;
+    }
+
+    Field list_field = list_element_fields[search_by_field];
+    setCursorPosition(0, EDITOR_POSY);
+    printf("Value: ");
+    setCursorPosition(len("Value: ") + list_field.size, EDITOR_POSY);
+    char mode = 'o';
+    printf(" Mode: %c", mode);
+    
+    setCursorVisibility(TRUE);
+
+    char ret = ARROW_RIGHT;
+    char * elem_offset = (char * ) last_readed + list_field.offset;
+    Field mode_field = { read_char, "mode", 0, 1, { values: "\3o+-" } };
+
+    loop {        
+        ret = list_field.read_func(ret, len("Value: ") - 1, elem_offset, list_field);
+        if(ret == KEY_ENTER || ret == KEY_ESC)
+            break;
+        ret = mode_field.read_func(ret, len("Value: ") + list_field.size + len(" Mode: ") - 1, &mode, mode_field);
+        if(ret == KEY_ENTER || ret == KEY_ESC)
+            break;
+    }
+
+    setCursorVisibility(FALSE);
+}
+
 int main(){
 
     //SetConsoleCP(866);
@@ -98,14 +141,8 @@ int main(){
 
     stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
 
-    //TODO: ??????, ??? ? ? ????? ??????
-    SMALL_RECT rect = { 32, 32, 128, 32 };
-    SetConsoleWindowInfo(stdout_handle, TRUE, &rect);
     GetConsoleCursorInfo(stdout_handle, &cursor_info);
-    GetConsoleScreenBufferInfo(stdout_handle, &buffer_info);
-    buffer_info.dwSize.X = buffer_info.srWindow.Right - buffer_info.srWindow.Left + 1;
-    buffer_info.dwSize.Y = buffer_info.srWindow.Bottom - buffer_info.srWindow.Top + 1;
-    SetConsoleScreenBufferSize(stdout_handle, buffer_info.dwSize);
+    adjust_buffer();
     
     last_readed = new(ListElement);
     element_zerofill(last_readed);
@@ -113,6 +150,7 @@ int main(){
     setCursorVisibility(FALSE);
     clear_lines(0, buffer_info.dwSize.Y);
     draw_menu();
+    draw_header(0);
     scroll_last_line = BOTTOM_LINE - 1;
     draw_scroll();
     
@@ -142,8 +180,10 @@ int main(){
     }
 
     clear_lines(0, buffer_info.dwSize.Y);
+    setCursorPosition(0, 0);
     setCursorVisibility(TRUE);
-
+    restore_buffer();
+    
     free(last_readed);
 
     return 0;

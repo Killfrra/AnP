@@ -1,6 +1,12 @@
 #ifndef CUSTOM_UI
 #define CUSTOM_UI
 
+#define MENU_POSY	0
+#define EDITOR_POSY	2 // ±1
+#define HEADER_POSY 4
+#define SCROLL_POSY 5
+#define E404_POSY	6
+
 #include "extended_conio.h"
 #include "extended_stddef.h"
 
@@ -8,7 +14,7 @@ ListElement * scroll_first_element_on_screen = NULL;
 ListElement * scroll_selected_element = NULL;
         int   scroll_selected_element_pos = -1;
 
-short scroll_first_line = 4;
+short scroll_first_line = SCROLL_POSY;
 short scroll_last_line = 5;
 
 void scroll_set_head(ListElement * el){
@@ -52,7 +58,8 @@ void redraw_scroll(){
     
     } else {
         clear_lines(scroll_first_line, scroll_last_line);
-        puts("\n Nothing to show");
+        setCursorPosition(0, E404_POSY);
+		puts(" Nothing to show");
     }
 }
 
@@ -88,26 +95,16 @@ char draw_editor(ListElement * elem){
     char ret = ARROW_RIGHT;
     char posx = 0;
 
-    clear_lines(1, POSY);
-    setCursorPosition(0, POSY);
+    clear_lines(EDITOR_POSY - 1, EDITOR_POSY + 1);
+    setCursorPosition(0, EDITOR_POSY);
     element_print(elem);
-    repeat(0, 3, buffer_info.dwSize.X, '_');
+    //repeat(0, 3, buffer_info.dwSize.X, '_');
     setCursorVisibility(TRUE);
 
     loop {
         Field field = list_element_fields[current_field];
-        //printf("\n%c%d", field.shortcut, posx);
         char * offset = (char * ) elem + field.offset;
-        if(field.type == 'c')
-            ret = read_char(posx, offset, field.prop.values);
-        if(field.type == 's')
-            ret = read_string(ret, posx, offset, field.size, field.prop.allow_digits);
-        else if(field.type == 'i')
-            ret = read_fixed_int(ret, posx, (unsigned int*) offset, field.size);
-        else if(field.type == 'h')
-            ret = read_fixed_short(ret, posx, (unsigned short*) offset, field.size);
-        else if(field.type == 'd')
-            ret = read_fixed_date(ret, posx, (Date*) offset);
+        ret = field.read_func(ret, posx, offset, field);
 
         if(ret == ARROW_LEFT){
             if(current_field != 0){
@@ -146,13 +143,14 @@ void menu_add();
 void menu_remove();
 void menu_edit();
 void menu_sort();
+void menu_search();
 
 #define item(name, func) { name, len(name) - 1, func }
 MenuItem menu_items[] = {
     item("+",  menu_add ),
     item("-",  menu_remove),
     item("Edit",  menu_edit),
-    item("Search", empty_func),
+    item("Search", menu_search),
     item("Sort", menu_sort),
     item("Export", empty_func),
     item("Import", empty_func),
@@ -191,6 +189,25 @@ void scroll_menu(Horizontal dir){
         selected_menu_item = 0;
     
     redraw_menu();
+}
+
+void redraw_header(unsigned char selected_header_item){
+    setCursorPosition(0, HEADER_POSY);
+    SetConsoleTextAttribute(stdout_handle, BACKGROUND_GRAY);
+    for(unsigned char i = 0; i < len(list_element_fields); i++){
+        if(i == selected_header_item){
+            SetConsoleTextAttribute(stdout_handle, BACKGROUND_WHITE);
+            printf(" %s ", list_element_fields[i].name);
+            SetConsoleTextAttribute(stdout_handle, BACKGROUND_GRAY);
+        } else
+            printf(" %s ", list_element_fields[i].name);
+    }
+    SetConsoleTextAttribute(stdout_handle, buffer_info.wAttributes);
+}
+
+void draw_header(unsigned char selected_header_item){
+    setColor(0, HEADER_POSY, buffer_info.dwSize.X, BACKGROUND_GRAY);
+    redraw_header(selected_header_item);
 }
 
 #endif

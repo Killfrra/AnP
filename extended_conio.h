@@ -16,6 +16,7 @@
 #define KEY_TAB 9
 
 #define BACKGROUND_WHITE (BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED)
+#define BACKGROUND_GRAY BACKGROUND_INTENSITY
 
 HANDLE stdout_handle;
 void setCursorPosition(SHORT x, SHORT y){
@@ -38,6 +39,22 @@ void clear_lines(short from, short to){
     //setCursorPosition(0, from);
 }
 
+CONSOLE_SCREEN_BUFFER_INFO orig_buffer_info;
+void adjust_buffer(){
+    //TODO: ??????, ??? ? ? ????? ??????
+    //SMALL_RECT rect = { 32, 32, 128, 32 };
+    //SetConsoleWindowInfo(stdout_handle, TRUE, &rect);
+    GetConsoleScreenBufferInfo(stdout_handle, &orig_buffer_info);
+    buffer_info = orig_buffer_info;
+    buffer_info.dwSize.X = buffer_info.srWindow.Right - buffer_info.srWindow.Left + 1;
+    buffer_info.dwSize.Y = buffer_info.srWindow.Bottom - buffer_info.srWindow.Top + 1;
+    SetConsoleScreenBufferSize(stdout_handle, buffer_info.dwSize);
+}
+
+void restore_buffer(){
+    SetConsoleScreenBufferSize(stdout_handle, orig_buffer_info.dwSize);
+}
+
 void setColor(short from_x, short from_y, DWORD _len, WORD attr){
     DWORD written;
     COORD coord = { from_x, from_y };
@@ -50,20 +67,33 @@ void repeat(short from_x, short from_y, DWORD _len, char c){
     FillConsoleOutputCharacter(stdout_handle, c, _len, coord, &written);
 }
 
+typedef struct field_struct {
+    char (* read_func)(char enter_dir, short posx, void * dest, struct field_struct field);
+    char * name;
+    size_t offset;
+    char size;
+    union {
+        char values[5];
+        char allow_digits;
+    } prop;
+} Field;
 
-#define POSY 2 //TODO: remove
+#define EDITOR_POSY	2 //TODO: remove and get it from ui.h
 
-char read_string(char enter_dir, short posx, char * dest, char buffer_size, char allow_digits){
+char read_string(char enter_dir, short posx, char * dest, Field field){
     
+    char buffer_size = field.size;
+    char allow_digits = field.prop.allow_digits;
+
     char * buffer = &dest[1];
     unsigned char last_char = dest[0];
     unsigned char cursor_pos = 0;
     if(enter_dir == ARROW_LEFT)
         cursor_pos = last_char;
 
-    setCursorPosition(posx, POSY);
+    setCursorPosition(posx, EDITOR_POSY);
     printf("%s", buffer);
-    setCursorPosition(posx + cursor_pos, POSY);
+    setCursorPosition(posx + cursor_pos, EDITOR_POSY);
 
     int ch;
     loop {
@@ -75,22 +105,22 @@ char read_string(char enter_dir, short posx, char * dest, char buffer_size, char
             //printf("DEBUG: %d\n", ch);
             if(ch == ARROW_LEFT){
                 if(cursor_pos != 0){
-                    setCursorPosition(posx + cursor_pos - 1, POSY);
+                    setCursorPosition(posx + cursor_pos - 1, EDITOR_POSY);
                     cursor_pos--;
                 } else
                     goto exit;
             } else if(ch == ARROW_RIGHT){
                 if(cursor_pos != last_char){
-                    setCursorPosition(posx + cursor_pos + 1, POSY);
+                    setCursorPosition(posx + cursor_pos + 1, EDITOR_POSY);
                     cursor_pos++;
                 } else
                     goto exit;
             } else if(ch == ARROW_UP){
                 cursor_pos = 0;
-                setCursorPosition(posx, POSY);
+                setCursorPosition(posx, EDITOR_POSY);
             } else if(ch == ARROW_DOWN){
                 cursor_pos = last_char;
-                setCursorPosition(posx + cursor_pos, POSY);
+                setCursorPosition(posx + cursor_pos, EDITOR_POSY);
             }
         } else {
             //printf("DEBUG: %c not 244\n", ch);
@@ -98,7 +128,7 @@ char read_string(char enter_dir, short posx, char * dest, char buffer_size, char
                 goto exit;
             else if(ch == KEY_BACKSPACE){
                 if(cursor_pos != 0){
-                    setCursorPosition(posx + cursor_pos - 1, POSY);
+                    setCursorPosition(posx + cursor_pos - 1, EDITOR_POSY);
                     if(cursor_pos == last_char)
                         putchar(' ');
                     else {
@@ -109,7 +139,7 @@ char read_string(char enter_dir, short posx, char * dest, char buffer_size, char
                     }
                     cursor_pos--;
                     last_char--;
-                    setCursorPosition(posx + cursor_pos, POSY);
+                    setCursorPosition(posx + cursor_pos, EDITOR_POSY);
                 }
             } else if
             (
@@ -121,15 +151,15 @@ char read_string(char enter_dir, short posx, char * dest, char buffer_size, char
             ){
 
                 if(ch == ' ' && buffer[cursor_pos] == ' '){
-                    setCursorPosition(posx + (++cursor_pos), POSY);
+                    setCursorPosition(posx + (++cursor_pos), EDITOR_POSY);
                     continue;
                 }
 
                 //TODO: think: оставлять ли последний char в buffer под '\0'?
                 if(last_char == buffer_size){
-                    setCursorPosition(posx, POSY + 1);
+                    setCursorPosition(posx, EDITOR_POSY + 1);
                     puts("Too many letters!");
-                    setCursorPosition(posx + cursor_pos, POSY);
+                    setCursorPosition(posx + cursor_pos, EDITOR_POSY);
                     continue;
                 }
 
@@ -145,7 +175,7 @@ char read_string(char enter_dir, short posx, char * dest, char buffer_size, char
                 cursor_pos++;
                 last_char++;
 
-                setCursorPosition(posx + cursor_pos, POSY);
+                setCursorPosition(posx + cursor_pos, EDITOR_POSY);
             }
         }
     }
@@ -157,7 +187,9 @@ exit:
     return ch;
 }
 
-char read_fixed_int(char enter_dir, short posx, unsigned int * dest, unsigned char n_digits){
+char read_fixed_int(char enter_dir, short posx, unsigned int * dest, Field field){
+
+    unsigned char n_digits = field.size;
     
     char buffer[11];
     unsigned char cursor_pos = 0;
@@ -171,9 +203,9 @@ char read_fixed_int(char enter_dir, short posx, unsigned int * dest, unsigned ch
     }
     buffer[n_digits] = '\0';
 
-    setCursorPosition(posx, POSY);
+    setCursorPosition(posx, EDITOR_POSY);
     printf("%s", buffer);
-    setCursorPosition(posx + cursor_pos, POSY);
+    setCursorPosition(posx + cursor_pos, EDITOR_POSY);
 
     int ch;
     loop {
@@ -183,13 +215,13 @@ char read_fixed_int(char enter_dir, short posx, unsigned int * dest, unsigned ch
             if(ch == ARROW_LEFT){
                 if(cursor_pos != 0){
                     cursor_pos--;
-                    setCursorPosition(posx + cursor_pos, POSY);
+                    setCursorPosition(posx + cursor_pos, EDITOR_POSY);
                 } else
                     goto exit;
             } else if(ch == ARROW_RIGHT){
                 if(cursor_pos != n_digits - 1){
                     cursor_pos++;
-                    setCursorPosition(posx + cursor_pos, POSY);
+                    setCursorPosition(posx + cursor_pos, EDITOR_POSY);
                 } else
                     goto exit;
             }
@@ -204,7 +236,7 @@ char read_fixed_int(char enter_dir, short posx, unsigned int * dest, unsigned ch
                 if(cursor_pos == n_digits)
                     goto exit;
 
-                setCursorPosition(posx + cursor_pos, POSY);
+                setCursorPosition(posx + cursor_pos, EDITOR_POSY);
             }
         }
     }
@@ -214,14 +246,14 @@ exit:
     return ch;
 }
 
-char read_fixed_short(char enter_dir, short posx, unsigned short * dest, unsigned char n_digits){
+char read_fixed_short(char enter_dir, short posx, unsigned short * dest, Field field){
     unsigned int temp = *dest;
-    char ret = read_fixed_int(enter_dir, posx, &temp, n_digits);
+    char ret = read_fixed_int(enter_dir, posx, &temp, field);
     *dest = temp & 0xFFFF;
     return ret;
 }
 
-char read_fixed_date(char enter_dir, short posx, Date * dest){
+char read_fixed_date(char enter_dir, short posx, Date * dest, Field field){
     
     char buffer[11] = {
         '0' + (dest->d / 10) % 10,
@@ -241,17 +273,17 @@ char read_fixed_date(char enter_dir, short posx, Date * dest){
     if(enter_dir == ARROW_LEFT)
         cursor_pos = 9;
 
-    setCursorPosition(posx, POSY);
+    setCursorPosition(posx, EDITOR_POSY);
     puts(buffer);
-    setCursorPosition(posx + cursor_pos, POSY);
+    setCursorPosition(posx + cursor_pos, EDITOR_POSY);
 
     #define inc_cursor_pos() { \
         cursor_pos += 1 + (cursor_pos == 1 || cursor_pos == 4); \
-        setCursorPosition(posx + cursor_pos, POSY); \
+        setCursorPosition(posx + cursor_pos, EDITOR_POSY); \
     }
     #define dec_cursor_pos() { \
         cursor_pos -= 1 + (cursor_pos == 3 || cursor_pos == 6); \
-        setCursorPosition(posx + cursor_pos, POSY); \
+        setCursorPosition(posx + cursor_pos, EDITOR_POSY); \
     }
 
     int ch;
@@ -302,13 +334,16 @@ exit:
     return ch;
 }
 
-char read_char(short posx, char * dest, char * values){
+char read_char(char enter_dir, short posx, char * dest, Field field){
+
+    char * values = field.prop.values;
+
     char n_values = (values++)[0];
     char buffer = *dest;
     
-    setCursorPosition(posx, POSY);
+    setCursorPosition(posx, EDITOR_POSY);
     putchar(buffer);
-    setCursorPosition(posx, POSY);
+    setCursorPosition(posx, EDITOR_POSY);
 
     int ch;
     loop {
