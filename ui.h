@@ -31,7 +31,7 @@ void redraw_scroll(){
 
     if(HEAD){
         ListElement * cur = scroll_first_element_on_screen;
-        int drawn = 0;
+        unsigned int drawn = 0;
         for(; cur && drawn < (scroll_last_line - scroll_first_line + 1); drawn++){
             if(drawn == scroll_selected_element_pos){
                 SetConsoleTextAttribute(stdout_handle, BACKGROUND_WHITE);
@@ -94,8 +94,7 @@ void scroll_scroll(Vertical dir){
 char draw_editor(ListElement * elem){
     unsigned char current_field = 0;
     char ret = ARROW_RIGHT;
-    char posx = 0;
-
+    
     clear_lines(EDITOR_POSY - 1, EDITOR_POSY + 1);
     setCursorPosition(0, EDITOR_POSY);
     element_print(elem);
@@ -105,25 +104,22 @@ char draw_editor(ListElement * elem){
     loop {
         Field field = list_element_fields[current_field];
         char * offset = (char * ) elem + field.offset;
-        ret = field.read_func(ret, posx, offset, field);
+        ret = field.read_func(ret, field.posx, offset, field);
 
         if(ret == ARROW_LEFT){
-            if(current_field != 0){
+            if(current_field == 0)
+                current_field = len(list_element_fields) - 1;
+            else
                 current_field--;
-                posx -= list_element_fields[current_field].len + 1;
-            }
-        } else if(ret == KEY_ESC || ret == KEY_ENTER)
+        } else if(ret == KEY_ESC || ret == KEY_ENTER) //TODO: only esc
             break;
         else if(current_field == len(list_element_fields) - 1){
-            if(ret != KEY_ENTER){
-                current_field = 0;
-                posx = 0;
-            } else
+            if(ret == KEY_ENTER)
                 break;
-        } else {
-            posx += list_element_fields[current_field].len + 1;
+            else
+                current_field = 0;
+        } else
             current_field++;
-        }
     }
 
     setCursorVisibility(FALSE);
@@ -213,6 +209,27 @@ void redraw_header(unsigned char selected_header_item){
 void draw_header(unsigned char selected_header_item){
     setColor(0, HEADER_POSY, buffer_info.dwSize.X, BACKGROUND_GRAY);
     redraw_header(selected_header_item);
+}
+
+char header_select_column(unsigned char * in_out){
+    unsigned char selected_column = *in_out;
+    int ch;
+    loop {
+        ch = _getch();
+        if(ch == 224){
+            ch = _getch();
+            if(ch == ARROW_RIGHT){
+                selected_column = (selected_column + 1) % len(list_element_fields);
+                redraw_header(selected_column);
+            } else if(ch == ARROW_LEFT){
+                selected_column = (selected_column - 1) % len(list_element_fields);
+                redraw_header(selected_column);
+            }
+        } else if(ch == KEY_ENTER || ch == KEY_ESC)
+            break;
+    }
+    *in_out = selected_column;
+    return ch;
 }
 
 #endif

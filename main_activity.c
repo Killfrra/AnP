@@ -78,8 +78,13 @@ void menu_edit(){
     }
 }
 
+unsigned char sort_by_field = 0;
 void menu_sort(){
     if(list_len > 1){
+
+        if(header_select_column(&sort_by_field) == KEY_ESC)
+            return;
+
         merge_sort();
         //scroll_set_head(HEAD);
         ListElement * cur = scroll_selected_element;
@@ -98,20 +103,9 @@ void menu_sort(){
 unsigned char search_by_field = 0;
 void menu_search(){
     redraw_header(search_by_field);
-    loop {
-        int ch = _getch();
-        if(ch == 224){
-            ch = _getch();
-            if(ch == ARROW_RIGHT){
-                search_by_field = (search_by_field + 1) % len(list_element_fields);
-                redraw_header(search_by_field);
-            } else if(ch == ARROW_LEFT){
-                search_by_field = (search_by_field - 1) % len(list_element_fields);
-                redraw_header(search_by_field);
-            }
-        } else if(ch == KEY_ENTER)
-            break;
-    }
+    
+    if(header_select_column(&search_by_field) == KEY_ESC)
+        goto exit;
 
     Field field = list_element_fields[search_by_field];
     setCursorPosition(0, EDITOR_POSY);
@@ -124,7 +118,7 @@ void menu_search(){
 
     char ret = ARROW_RIGHT;
     char * field_value_ptr = (char * ) last_readed + field.offset; //TODO: rename
-    Field mode_field = { read_char, "mode", 0, 1, { values: "\3o+-" } };
+    Field mode_field = { 0, 1, 1, read_char, "mode", 0, { values: "\3o+-" } };
 
     loop {        
         ret = field.read_func(ret, len("Value: ") - 1, field_value_ptr, field);
@@ -145,8 +139,11 @@ void menu_search(){
         field_value_ptr++;
     }
 
-    if(mode == 'o')
+    if(mode == 'o'){
         heads[SEARCH] = NULL;
+        tails[SEARCH] = NULL;
+        list_lengths[SEARCH] = 0;
+    }
     if(mode != '-')
         for(ListElement * cur = heads[SHOW]; cur; cur = cur->link[2])
             if(memcmp((char *) cur + field_offset, field_value_ptr, field_size) == 0)
@@ -155,6 +152,7 @@ void menu_search(){
     scroll_set_head(heads[SEARCH]);
     redraw_scroll();
 
+exit:
     setCursorVisibility(FALSE);
     clear_lines(1, 3);
     start_quote();

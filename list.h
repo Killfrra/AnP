@@ -40,24 +40,29 @@ char read_fixed_date(char enter_dir, short posx, Date * dest, Field field);
 char read_fixed_short(char enter_dir, short posx, unsigned short * dest, Field field);
 */
 
+// Группа  Зачетка  Пол  Форма  Рождение    Поступление  ЕГЭ  ФИО                              //
+// ......  ......    .     .    00.00.0000  00.00.0000   ...  ................................ //
+
+#define field(x, l, s, r, n, o, p) { x, l, s, r, n, offsetof(FileData, o), p }
 Field list_element_fields[] = {
-	{ read_string      , "Шифр группы", offsetof(FileData, group_name), 6, { allow_digits: TRUE }, .size = 6},
-	{ read_fixed_int   , "Номер зачетной книжки", offsetof(FileData, gradebook_number), 6, .size = sizeof(int) },
-	{ read_char        , "Пол", offsetof(FileData, gender), 1, { values: "\2mf" }, .size = 1 },
-	{ read_char        , "Форма обучения", offsetof(FileData, education_form), 1, { values: "\3ozd" }, .size = 1 },
-	{ read_fixed_date  , "Дата рождения", offsetof(FileData, birth_date), 10, .size = sizeof(Date) },
-	{ read_fixed_date  , "Дата поступления", offsetof(FileData, admission_date), 10, .size = sizeof(Date) },
-	{ read_fixed_short , "Балл ЕГЭ", offsetof(FileData, USE_score), 3, .size = sizeof(short) },
-    { read_string      , "ФИО", offsetof(FileData, full_name), FILEDATA_NAME_LEN, { allow_digits: FALSE }, .size = FILEDATA_NAME_LEN }
+	field( 1,  6,             6, read_string      , "Группа"     , group_name      , { allow_digits: TRUE }),
+	field( 9,  6,   sizeof(int), read_fixed_int   , "Зачетка"    , gradebook_number, {0}),
+	field(19,  1,             1, read_char        , "Пол"        , gender          , { values: "\2mf"  }),
+	field(25,  1,             1, read_char        , "Форма"      , education_form  , { values: "\3ozd" }),
+	field(30, 10,  sizeof(Date), read_fixed_date  , "Рождение  " , birth_date      , {0}),
+	field(42, 10,  sizeof(Date), read_fixed_date  , "Поступление", admission_date  , {0}),
+	field(55,  3, sizeof(short), read_fixed_short , "ЕГЭ"        , USE_score       , {0}),
+    field(60, 32,            32, read_string      , "ФИО"        , full_name       , { allow_digits: FALSE })
 };
+#undef field
 
 void element_print(ListElement * cur){
 	FileData * _ = &cur->data;
-	printf("%-6s %06u %c %c ", &_->group_name[1], _->gradebook_number, _->gender, _->education_form);
+	printf(" %-6s  %06u    %c     %c    ", &_->group_name[1], _->gradebook_number, _->gender, _->education_form);
     print_date(_->birth_date);
-    putchar(' ');
+    printf("  ");
     print_date(_->admission_date);
-    printf(" %03hu %s\n", _->USE_score, &_->full_name[1]);
+    printf("   %03hu  %s\n", _->USE_score, &_->full_name[1]);
 }
 
 void element_zerofill(ListElement * elem){
@@ -145,7 +150,7 @@ Cut recursion(ListElement * first, int len){
         Cut cut1 = recursion(first, half_len);
         Cut cut2 = recursion(cut1.next, len - half_len); // uses next
         return merge(cut1, cut2);
-    } else if(len > 2){
+    } else if(len == 3){
         Cut cut = recursion(first->NEXT, 2);
         if(first->VAL < cut.first->VAL){
             connect(first, cut.first);
@@ -157,8 +162,9 @@ Cut recursion(ListElement * first, int len){
             cut.last = first;
         }
         return cut;
-    } else {
+    } else if(len == 2){
         Cut cut = { first, first->NEXT };
+        //TODO: fix crash here
         cut.next = cut.last->NEXT;
         if(cut.first->VAL > cut.last->VAL){
             ListElement * tmp = cut.first;

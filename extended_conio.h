@@ -67,22 +67,29 @@ void repeat(short from_x, short from_y, DWORD _len, char c){
     FillConsoleOutputCharacter(stdout_handle, c, _len, coord, &written);
 }
 
+#define READ_FUNC_SIGNATURE(name) char (* name)(char enter_dir, short posx, void * dest, struct field_struct field)
+
 typedef struct field_struct {
-    char (* read_func)(char enter_dir, short posx, void * dest, struct field_struct field); // 8
+    unsigned short posx; // 2
+    char len; // 1
+    char size; // 1
+    READ_FUNC_SIGNATURE(read_func); // 8
     char * name; // 8
     size_t offset; // 8
-    char len; // 1
     union {
-        char values[5]; // 5
+        char values[8]; // 7
         char allow_digits; // 1
     } prop;
-    char size; //TODO: reorder
 } Field;
+
+//typedef READ_FUNC_SIGNATURE(ReadFunc);
 
 #define EDITOR_POSY	2 //TODO: remove and get it from ui.h
 
-char read_string(char enter_dir, short posx, char * dest, Field field){
+char read_string(char enter_dir, short posx, void * dest, Field field){
     
+    #define dest ((char *) dest)
+
     char buffer_size = field.len;
     char allow_digits = field.prop.allow_digits;
 
@@ -92,8 +99,8 @@ char read_string(char enter_dir, short posx, char * dest, Field field){
     if(enter_dir == ARROW_LEFT)
         cursor_pos = last_char;
 
-    setCursorPosition(posx, EDITOR_POSY);
-    printf("%s", buffer);
+    //setCursorPosition(posx, EDITOR_POSY);
+    //printf("%s", buffer);
     setCursorPosition(posx + cursor_pos, EDITOR_POSY);
 
     int ch;
@@ -186,10 +193,13 @@ exit:
     buffer[last_char] = '\0';
     dest[0] = last_char;
     return ch;
+
+    #undef dest
 }
 
-char read_fixed_int(char enter_dir, short posx, unsigned int * dest, Field field){
+char read_fixed_int(char enter_dir, short posx, void * dest, Field field){
 
+    #define dest ((unsigned int *) dest)
     unsigned char n_digits = field.len;
     
     char buffer[11];
@@ -204,8 +214,8 @@ char read_fixed_int(char enter_dir, short posx, unsigned int * dest, Field field
     }
     buffer[n_digits] = '\0';
 
-    setCursorPosition(posx, EDITOR_POSY);
-    printf("%s", buffer);
+    //setCursorPosition(posx, EDITOR_POSY);
+    //printf("%s", buffer);
     setCursorPosition(posx + cursor_pos, EDITOR_POSY);
 
     int ch;
@@ -245,17 +255,23 @@ char read_fixed_int(char enter_dir, short posx, unsigned int * dest, Field field
 exit:
     *dest = atoi(buffer);
     return ch;
+
+    #undef dest
 }
 
-char read_fixed_short(char enter_dir, short posx, unsigned short * dest, Field field){
+char read_fixed_short(char enter_dir, short posx, void * dest, Field field){
+    #define dest ((unsigned short *) dest)
     unsigned int temp = *dest;
     char ret = read_fixed_int(enter_dir, posx, &temp, field);
     *dest = temp & 0xFFFF;
     return ret;
+    #undef dest
 }
 
-char read_fixed_date(char enter_dir, short posx, Date * dest, Field field){
+char read_fixed_date(char enter_dir, short posx, void * dest, Field field){
     
+    #define dest ((Date *) dest)
+
     char buffer[11] = {
         '0' + (dest->d / 10) % 10,
         '0' + (dest->d % 10),
@@ -274,8 +290,8 @@ char read_fixed_date(char enter_dir, short posx, Date * dest, Field field){
     if(enter_dir == ARROW_LEFT)
         cursor_pos = 9;
 
-    setCursorPosition(posx, EDITOR_POSY);
-    puts(buffer);
+    //setCursorPosition(posx, EDITOR_POSY);
+    //puts(buffer);
     setCursorPosition(posx + cursor_pos, EDITOR_POSY);
 
     #define inc_cursor_pos() { \
@@ -333,17 +349,21 @@ exit:
     dest->y = (buffer[6] - '0') * 1000 + (buffer[7] - '0') * 100 +
               (buffer[8] - '0') * 10   + (buffer[9] - '0');
     return ch;
+
+    #undef dest
 }
 
-char read_char(char enter_dir, short posx, char * dest, Field field){
+char read_char(char enter_dir, short posx, void * dest, Field field){
+
+    #define dest ((char *) dest)
 
     char * values = field.prop.values;
 
     char n_values = (values++)[0];
     char buffer = *dest;
     
-    setCursorPosition(posx, EDITOR_POSY);
-    putchar(buffer);
+    //setCursorPosition(posx, EDITOR_POSY);
+    //putchar(buffer);
     setCursorPosition(posx, EDITOR_POSY);
 
     int ch;
@@ -370,6 +390,8 @@ char read_char(char enter_dir, short posx, char * dest, Field field){
 exit:
     *dest = buffer;
     return ch;
+
+    #undef dest
 }
 
 #endif
