@@ -85,7 +85,7 @@ void menu_sort(){
         if(header_select_column(&sort_by_field) == KEY_ESC)
             return;
 
-        merge_sort();
+        merge_sort(sort_by_field);
         //scroll_set_head(HEAD);
         ListElement * cur = scroll_selected_element;
         for(unsigned int i = 0; i < scroll_selected_element_pos; i++){
@@ -133,6 +133,7 @@ void menu_search(){
     char field_size = field.size;
     size_t field_offset = field.offset;
 
+    //TODO: wrap into func
     if((char *) field.read_func == (char *) read_string){
         field_size = field_value_ptr[0];
         field_offset++;

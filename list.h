@@ -10,7 +10,7 @@
 
 typedef struct {
     char group_name[6 + 1]; // 7
-    int gradebook_number; // 4
+    unsigned int gradebook_number; // 4
     char full_name[FILEDATA_NAME_LEN]; // 32
     char gender, education_form; // 1 + 1
     Date birth_date, admission_date; // 4 + 4
@@ -27,7 +27,6 @@ enum { SHOW = 0, SEARCH = 1 } link_layer = SHOW;
 #define DIR(d) link[d * 2 + link_layer]
 #define PREV   link[0 + link_layer]
 #define NEXT   link[2 + link_layer]
-#define VAL    data.USE_score       //TODO: compare_by_val(a, b)
 
 #define connect(a, b)  { a->NEXT = b; b->PREV = a; }
 #define connect3(a, b, c) { connect(a, b); connect(b, c); }
@@ -115,6 +114,13 @@ void list_remove(ListElement * el){
         free(el);
 }
 
+size_t field_to_compare_by_offset;
+unsigned char field_to_compare_by_size;
+int list_element_compare(ListElement * a, ListElement * b){
+    //TODO: reinvent the wheel
+    return memcmp((char *) a + field_to_compare_by_offset, (char *) b + field_to_compare_by_offset, field_to_compare_by_size);
+}
+
 typedef struct {
     ListElement * first, * last;
     ListElement * next; // указатель на начало следующего отрезка
@@ -125,13 +131,13 @@ Cut merge(Cut l1, Cut l2){
     Cut cut = { .next = l2.next };
     ListElement * cur, * cur_[2];
     
-    unsigned char min = l1.first->VAL >= l2.first->VAL;
+    unsigned char min = list_element_compare(l1.first, l2.first) >= 0;
     cut.first = cur = l[min].first;
     cur_[min] = cur->NEXT;
     cur_[!min] = l[!min].first;
     
     while(1){
-        unsigned char min = cur_[0]->VAL >= cur_[1]->VAL;
+        unsigned char min = list_element_compare(cur_[0], cur_[1]) >= 0;
         connect(cur, cur_[min]);
         cur = cur_[min];
         if(cur == l[min].last){
@@ -152,21 +158,20 @@ Cut recursion(ListElement * first, int len){
         return merge(cut1, cut2);
     } else if(len == 3){
         Cut cut = recursion(first->NEXT, 2);
-        if(first->VAL < cut.first->VAL){
+        if(list_element_compare(first, cut.first) <= 0){
             connect(first, cut.first);
             cut.first = first;
-        } else if(first->VAL < cut.last->VAL){
+        } else if(list_element_compare(first, cut.last) < 0){
             connect3(cut.first, first, cut.last);
         } else {
             connect(cut.last, first);
             cut.last = first;
         }
         return cut;
-    } else if(len == 2){
+    } else /* if(len == 2) */ {
         Cut cut = { first, first->NEXT };
-        //TODO: fix crash here
         cut.next = cut.last->NEXT;
-        if(cut.first->VAL > cut.last->VAL){
+        if(list_element_compare(cut.first, cut.last) > 0){
             ListElement * tmp = cut.first;
             cut.first = cut.last;
             cut.last = tmp;
@@ -179,7 +184,17 @@ Cut recursion(ListElement * first, int len){
 }
 
 //WARN: list_len should be >= 2
-void merge_sort(){
+void merge_sort(unsigned char field_id){
+    Field field = list_element_fields[field_id];
+    field_to_compare_by_offset = field.offset;
+    field_to_compare_by_size = field.size;
+    /*
+    //TODO: wrap into func?
+    if((char *) field.read_func == (char *) read_string){
+        field_to_compare_by_offset++;
+        field_to_compare_by_size--;
+    }
+    */
     Cut cut = recursion(HEAD, list_len);
     HEAD = cut.first;
     TAIL = cut.last;

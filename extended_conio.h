@@ -71,8 +71,8 @@ void repeat(short from_x, short from_y, DWORD _len, char c){
 
 typedef struct field_struct {
     unsigned short posx; // 2
-    char len; // 1
-    char size; // 1
+    unsigned char len; // 1
+    unsigned char size; // 1
     READ_FUNC_SIGNATURE(read_func); // 8
     char * name; // 8
     size_t offset; // 8
@@ -153,8 +153,8 @@ char read_string(char enter_dir, short posx, void * dest, Field field){
             (
                 (allow_digits && ch >= '0' && ch <= '9') ||
                 (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-                (ch >= 'а' && ch <= 'я') || (ch >= 'А' && ch <= 'Я') ||
-                // пробел не может быть первым, не может идти два раза подряд
+                (ch >= 'пїЅ' && ch <= 'пїЅ') || (ch >= 'пїЅ' && ch <= 'пїЅ') ||
+                // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
                 (ch == ' ' && (cursor_pos != 0 && buffer[cursor_pos - 1] != ' '))
             ){
 
@@ -163,7 +163,7 @@ char read_string(char enter_dir, short posx, void * dest, Field field){
                     continue;
                 }
 
-                //TODO: think: оставлять ли последний char в buffer под '\0'?
+                //TODO: think: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ char пїЅ buffer пїЅпїЅпїЅ '\0'?
                 if(last_char == buffer_size){
                     setCursorPosition(posx, EDITOR_POSY + 1);
                     puts("Too many letters!");

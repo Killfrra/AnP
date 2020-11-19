@@ -2,7 +2,7 @@
 #define CUSTOM_UI
 
 #define MENU_POSY	0
-#define EDITOR_POSY	2 // ±1
+#define EDITOR_POSY	2 // ï¿½1
 #define HEADER_POSY 4
 #define SCROLL_POSY 5
 #define E404_POSY	6
@@ -73,7 +73,7 @@ void scroll_scroll(Vertical dir){
             scroll_first_element_on_screen = scroll_first_element_on_screen->PREV;
             scroll_selected_element = scroll_first_element_on_screen;
             redraw_scroll();
-        } else if(dir == DOWN && scroll_selected_element_pos == scroll_last_line - scroll_first_line){
+        } else if(dir == DOWN && scroll_selected_element_pos == (scroll_last_line - scroll_first_line)){
             scroll_first_element_on_screen = scroll_first_element_on_screen->NEXT;
             scroll_selected_element = scroll_selected_element->NEXT;
             redraw_scroll();
