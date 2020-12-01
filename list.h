@@ -9,12 +9,12 @@
 #define FILEDATA_NAME_LEN 32
 
 typedef struct {
-    char group_name[6 + 1]; // 7
+    char group_name[6 + 2]; // 8
     unsigned int gradebook_number; // 4
     char full_name[FILEDATA_NAME_LEN]; // 32
     char gender, education_form; // 1 + 1
     Date birth_date, admission_date; // 4 + 4
-    short USE_score; // 2
+    unsigned short USE_score; // 2
 } FileData;
 
 typedef struct list_element {
@@ -39,19 +39,27 @@ char read_fixed_date(char enter_dir, short posx, Date * dest, Field field);
 char read_fixed_short(char enter_dir, short posx, unsigned short * dest, Field field);
 */
 
+#define compare_func(name, type) int name(void * a, void * b){ \
+    return *(type *) a - *(type *) b; \
+}
+
+compare_func(intcmp, int)
+compare_func(chrcmp, char)
+compare_func(shrcmp, short)
+
 // Группа  Зачетка  Пол  Форма  Рождение    Поступление  ЕГЭ  ФИО                              //
 // ......  ......    .     .    00.00.0000  00.00.0000   ...  ................................ //
 
-#define field(x, l, s, r, n, o, p) { x, l, s, r, n, offsetof(FileData, o), p }
+#define field(x, l, s, r, c, n, o, p) { x, l, s, r, c, n, offsetof(FileData, o), p }
 Field list_element_fields[] = {
-	field( 1,  6,             6, read_string      , "Группа"     , group_name      , { allow_digits: TRUE }),
-	field( 9,  6,   sizeof(int), read_fixed_int   , "Зачетка"    , gradebook_number, {0}),
-	field(19,  1,             1, read_char        , "Пол"        , gender          , { values: "\2mf"  }),
-	field(25,  1,             1, read_char        , "Форма"      , education_form  , { values: "\3ozd" }),
-	field(30, 10,  sizeof(Date), read_fixed_date  , "Рождение  " , birth_date      , {0}),
-	field(42, 10,  sizeof(Date), read_fixed_date  , "Поступление", admission_date  , {0}),
-	field(55,  3, sizeof(short), read_fixed_short , "ЕГЭ"        , USE_score       , {0}),
-    field(60, 32,            32, read_string      , "ФИО"        , full_name       , { allow_digits: FALSE })
+	field( 1,  6,             6, read_string     ,  strcmp, "Группа"     , group_name      , { allow_digits: TRUE }),
+	field( 9,  6,   sizeof(int), read_fixed_int  ,  intcmp, "Зачетка"    , gradebook_number, {0}),
+	field(19,  1,             1, read_char       ,  chrcmp, "Пол"        , gender          , { values: "\2mf"  }),
+	field(25,  1,             1, read_char       ,  chrcmp, "Форма"      , education_form  , { values: "\3ozd" }),
+	field(30, 10,  sizeof(Date), read_fixed_date ,  intcmp, "Рождение  " , birth_date      , {0}),
+	field(42, 10,  sizeof(Date), read_fixed_date ,  intcmp, "Поступление", admission_date  , {0}),
+	field(55,  3, sizeof(short), read_fixed_short,  shrcmp, "ЕГЭ"        , USE_score       , {0}),
+    field(60, 32,            32, read_string     ,  strcmp, "ФИО"        , full_name       , { allow_digits: FALSE })
 };
 #undef field
 
@@ -64,6 +72,29 @@ void element_print(ListElement * cur){
     printf("   %03hu  %s\n", _->USE_score, &_->full_name[1]);
 }
 
+void element_print_to_txt(FILE * f, ListElement * cur){
+	FileData * _ = &cur->data;
+	fprintf(
+        f, "%-6s %06u %c %c %02hu.%02hu.%04hu %02hu.%02hu.%04hu %3hu %s\n",
+        &_->group_name[1], _->gradebook_number, _->gender, _->education_form,
+        (short) _->birth_date.d, (short) _->birth_date.m, _->birth_date.y,
+        (short) _->admission_date.d, (short) _->admission_date.m, _->admission_date.y,
+        _->USE_score, &_->full_name[1]
+    );
+}
+/*
+void element_read_from_txt(FILE * f, ListElement * cur){
+	FileData * _ = &cur->data;
+	fscanf(
+        f, "%6s %6u %c %c %2hhu.%2hhu.%4hu %2hhu.%2hhu.%4hu %3hu",
+        &_->group_name[1], &_->gradebook_number, &_->gender, &_->education_form,
+        &_->birth_date.d, &_->birth_date.m, &_->birth_date.y,
+        &_->admission_date.d, &_->admission_date.m, &_->admission_date.y,
+        _->USE_score
+    );
+    // &_->full_name[1]
+}
+*/
 void element_zerofill(ListElement * elem){
     memset(elem, 0, sizeof(ListElement));
     elem->data.gender = elem->data.education_form = ' ';
@@ -114,11 +145,10 @@ void list_remove(ListElement * el){
         free(el);
 }
 
+CompareFunc list_element_compare_func;
 size_t field_to_compare_by_offset;
-unsigned char field_to_compare_by_size;
 int list_element_compare(ListElement * a, ListElement * b){
-    //TODO: reinvent the wheel
-    return memcmp((char *) a + field_to_compare_by_offset, (char *) b + field_to_compare_by_offset, field_to_compare_by_size);
+    return list_element_compare_func((char *) a + field_to_compare_by_offset, (char *) b + field_to_compare_by_offset);
 }
 
 typedef struct {
@@ -187,7 +217,7 @@ Cut recursion(ListElement * first, int len){
 void merge_sort(unsigned char field_id){
     Field field = list_element_fields[field_id];
     field_to_compare_by_offset = field.offset;
-    field_to_compare_by_size = field.size;
+    list_element_compare_func = field.comp_func;
     /*
     //TODO: wrap into func?
     if((char *) field.read_func == (char *) read_string){

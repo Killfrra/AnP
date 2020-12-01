@@ -16,12 +16,7 @@ typedef struct {
 } Date;
 
 void print_date(Date date){
-    printf(
-        "%02u.%02u.%04u",
-        (short) date.d,
-        (short) date.m,
-        (short) date.y
-    );
+    printf("%02hu.%02hu.%04hu", (short) date.d, (short) date.m, date.y);
 }
 
 #endif

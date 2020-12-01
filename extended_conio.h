@@ -68,12 +68,14 @@ void repeat(short from_x, short from_y, DWORD _len, char c){
 }
 
 #define READ_FUNC_SIGNATURE(name) char (* name)(char enter_dir, short posx, void * dest, struct field_struct field)
+typedef int (* CompareFunc) (void * a, void * b);
 
 typedef struct field_struct {
     unsigned short posx; // 2
     unsigned char len; // 1
     unsigned char size; // 1
     READ_FUNC_SIGNATURE(read_func); // 8
+    CompareFunc comp_func; // 8
     char * name; // 8
     size_t offset; // 8
     union {
@@ -153,7 +155,7 @@ char read_string(char enter_dir, short posx, void * dest, Field field){
             (
                 (allow_digits && ch >= '0' && ch <= '9') ||
                 (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-                (ch >= 'ï¿½' && ch <= 'ï¿½') || (ch >= 'ï¿½' && ch <= 'ï¿½') ||
+                (ch >= 'à' && ch <= 'ÿ') || (ch >= 'À' && ch <= 'ß') ||
                 // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                 (ch == ' ' && (cursor_pos != 0 && buffer[cursor_pos - 1] != ' '))
             ){

@@ -118,15 +118,19 @@ void menu_search(){
 
     char ret = ARROW_RIGHT;
     char * field_value_ptr = (char * ) last_readed + field.offset; //TODO: rename
-    Field mode_field = { 0, 1, 1, read_char, "mode", 0, { values: "\3o+-" } };
+    Field mode_field = { prop: { values: "\3o+-" } };
 
-    loop {        
+    loop { //TODO: make shorter
         ret = field.read_func(ret, len("Value: ") - 1, field_value_ptr, field);
-        if(ret == KEY_ENTER || ret == KEY_ESC)
+        if(ret == KEY_ENTER)
             break;
-        ret = mode_field.read_func(ret, len("Value: ") + field.len + len(" Mode: ") - 1, &mode, mode_field);
-        if(ret == KEY_ENTER || ret == KEY_ESC)
+        else if(ret == KEY_ESC)
+            goto exit;
+        ret = read_char(ret, len("Value: ") + field.len + len(" Mode: ") - 1, &mode, mode_field);
+        if(ret == KEY_ENTER)
             break;
+        else if(ret == KEY_ESC)
+            goto exit;
     }
 
     link_layer = SEARCH;
@@ -165,6 +169,38 @@ void menu_close_search(){
     redraw_menu();
     scroll_set_head(HEAD);
     redraw_scroll();
+}
+
+void menu_export(){
+    setCursorPosition(0, EDITOR_POSY);
+    printf("Filename: ");
+    setCursorVisibility(TRUE);
+    char filename[FILEDATA_NAME_LEN] = {0};
+    Field file_field = { len: FILEDATA_NAME_LEN, prop: { allow_digits: TRUE } };
+    int ret = ARROW_RIGHT;
+    loop {
+        ret = read_string(ret, len("Filename: ") - 1, filename, file_field);
+        if(ret == KEY_ENTER)
+            break;
+        else if(ret == KEY_ESC)
+            goto exit;
+    }
+
+    FILE * file = fopen(&filename[1], "w");
+    if(!file){
+        setCursorVisibility(FALSE);
+        clear_lines(1, 3);
+        setCursorPosition(0, EDITOR_POSY);
+        puts("ERROR");
+        return;
+    }
+    for(ListElement * cur = HEAD; cur; cur = cur->NEXT)
+        element_print_to_txt(file, cur);
+
+exit:
+    setCursorVisibility(FALSE);
+    clear_lines(1, 3);
+    start_quote();
 }
 
 int main(){

@@ -142,6 +142,7 @@ void menu_edit();
 void menu_sort();
 void menu_search();
 void menu_close_search();
+void menu_export();
 
 #define item(name, func) { name, len(name) - 1, func }
 MenuItem menu_items[] = {
@@ -150,7 +151,7 @@ MenuItem menu_items[] = {
     item("Edit",  menu_edit),
     item("Search", menu_search),
     item("Sort", menu_sort),
-    item("Export", empty_func),
+    item("Export", menu_export),
     item("Import", empty_func),
     item("Save", empty_func),
     item("Process", empty_func),
