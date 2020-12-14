@@ -78,7 +78,7 @@ void element_print(ListElement * cur){
     print_date(_->birth_date);
     printf("  ");
     print_date(_->admission_date);
-    printf("   %03hu  %s\n", _->USE_score, &_->full_name[1]);
+    printf("   %03hu  %-80s\n", _->USE_score, &_->full_name[1]);
 }
 
 // returns negative number on falture
@@ -280,54 +280,54 @@ typedef struct {
 	unsigned short score;
 } Excellent; //TODO: rename to smth meaningful
 
+int list_process_cmp(FileData * a, FileData * b){
+    int ret = strcmp(a->group_name, b->group_name);
+    if(!ret){
+        ret = a->gender - b->gender;
+        if(!ret){
+            ret = b->USE_score - a->USE_score;
+            if(!ret){
+                ret = (
+                    a->admission_date.y * 365 + a->admission_date.m * 31 + a->admission_date.m
+                ) - (
+                    b->admission_date.y * 365 + b->admission_date.m * 31 + b->admission_date.m
+                );
+            }
+        }
+    }
+    return ret;
+}
+
 void list_process(){
+    //assert(list_len > 2)
+
     list_copy_to_search_layer();
     link_layer = SEARCH;
-    merge_sort(0); // indexof(group) = 0
-    Excellent all_excellents[2 * 5] = { 0 };
+
+    field_to_compare_by_offset = offsetof(ListElement, data);
+    list_element_compare_func = list_process_cmp;
+    Cut cut = recursion(HEAD, list_len);
+    HEAD = TAIL = cut.first;
+    cut.last->NEXT = NULL;
+    HEAD->PREV = NULL;
+    list_len = 1;
     
-    ListElement * cur = HEAD; //TODO: ListElement -> Excellent?
-    HEAD = TAIL = NULL;
-    list_len = 0;
+    char i = 1;
+    ListElement * cur = HEAD->NEXT;
     while(cur){
-        unsigned short score = cur->data.USE_score;
-		Excellent * excellents = &all_excellents[(cur->data.gender == 'm') * 5];
-        for(unsigned char i = 0; i < 5; i++)
-            if(
-                !excellents[i].link ||
-                 excellents[i].score < score || (
-                        excellents[i].score == score &&
-                        cmpdte(&cur->data.admission_date, &excellents[i].link->data.admission_date) < 0
-                 )
-            ){
-                memmove(&excellents[i + 1], &excellents[i], sizeof(excellents[0]) * (5 - i - 1));
-                excellents[i].score = score;
-                excellents[i].link = cur;
-                break;
-            }
-        ListElement * next = cur->NEXT;
-        if(!next || strcmp(&next->data.group_name[1], &cur->data.group_name[1])){
-			for(char gender = 0; gender < 2; gender++){ //TODO: optimize
-				excellents = &all_excellents[gender * 5];
-				unsigned char i = 0;
-				if(excellents[i].link){
-					if(!HEAD){
-						HEAD = TAIL = excellents[i].link;
-						HEAD->PREV = NULL;
-						list_len = i = 1;
-					}
-					for(; i < 5 && excellents[i].link; i++){
-						connect(TAIL, excellents[i].link);
-						TAIL = excellents[i].link;
-					}
-				}
-			}
-            memset(all_excellents, 0, sizeof(all_excellents));
+        if(i < 5){
+            connect(TAIL, cur);
+            TAIL = cur;
+            list_len++;
+            i++;
         }
+        ListElement * next = cur->NEXT;
+        if(next && (strcmp(next->data.group_name, cur->data.group_name) || next->data.gender != cur->data.gender))
+            i = 0;
 		cur = next;
     }
-    if(TAIL)
-        TAIL->NEXT = NULL;
+    
+    TAIL->NEXT = NULL;
 }
 /*
 int main(){
