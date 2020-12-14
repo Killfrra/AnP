@@ -133,6 +133,8 @@ void menu_search(){
             goto exit;
     }
 
+    setCursorVisibility(FALSE);
+
     link_layer = SEARCH;
     char field_size = field.size;
     size_t field_offset = field.offset;
@@ -158,7 +160,6 @@ void menu_search(){
     redraw_scroll();
 
 exit:
-    setCursorVisibility(FALSE);
     clear_lines(1, 3);
     start_quote();
 }
@@ -171,36 +172,103 @@ void menu_close_search(){
     redraw_scroll();
 }
 
-void menu_export(){
+void print_error_or_mistake(char * str){
+    clear_lines(1, 3);
+    setCursorPosition(0, EDITOR_POSY);
+    mistake_quote();
+    setCursorPosition(0, BOTTOM_LINE);
+    printf(str);
+}
+
+char read_filename(char * filename){
     setCursorPosition(0, EDITOR_POSY);
     printf("Filename: ");
+
     setCursorVisibility(TRUE);
-    char filename[FILEDATA_NAME_LEN] = {0};
-    Field file_field = { len: FILEDATA_NAME_LEN, prop: { allow_digits: TRUE } };
+    
+    Field file_field = { len: FILEDATA_NAME_LEN, prop: { allow: ALLOW_DIGITS | ALLOW_SPECIAL } };
     int ret = ARROW_RIGHT;
     loop {
         ret = read_string(ret, len("Filename: ") - 1, filename, file_field);
-        if(ret == KEY_ENTER)
-            break;
-        else if(ret == KEY_ESC)
+        if(ret == KEY_ENTER || ret == KEY_ESC)
             goto exit;
     }
 
-    FILE * file = fopen(&filename[1], "w");
-    if(!file){
-        setCursorVisibility(FALSE);
-        clear_lines(1, 3);
-        setCursorPosition(0, EDITOR_POSY);
-        puts("ERROR");
-        return;
-    }
-    for(ListElement * cur = HEAD; cur; cur = cur->NEXT)
-        element_print_to_txt(file, cur);
-
 exit:
     setCursorVisibility(FALSE);
+    return ret;
+}
+
+void menu_export(){
+    link_layer = SHOW;
+    char filename[FILEDATA_NAME_LEN] = {0};
+    char ret = read_filename(filename);
+    if(ret == KEY_ESC)
+        goto exit;
+
+    FILE * file = fopen(&filename[1], "w");
+    if(!file){
+        print_error_or_mistake("Error creating file");
+        return;
+    }
+
+    for(ListElement * cur = HEAD; cur; cur = cur->NEXT)
+        if(element_print_to_txt(file, cur) <= 0){
+            print_error_or_mistake("Error writing to file");
+            fclose(file);
+            return;
+        }
+    
+    fflush(file);
+    fclose(file);
+
+exit:
     clear_lines(1, 3);
+    setCursorPosition(0, EDITOR_POSY);
     start_quote();
+}
+
+void menu_import(){
+    //TODO: wrap into func?
+    link_layer = SHOW;
+    char filename[FILEDATA_NAME_LEN] = {0};
+    char ret = read_filename(filename);
+    if(ret == KEY_ESC)
+        goto exit;
+
+    FILE * file = fopen(&filename[1], "r");
+    if(!file){
+        print_error_or_mistake("Error opening file");
+        return;
+    }
+
+    list_free();
+
+    while(element_read_from_txt(file, last_readed) >= 0){
+		if(HEAD == NULL)
+			HEAD = TAIL = last_readed;
+		else {
+			connect(TAIL, last_readed);
+			TAIL = last_readed;
+		}
+		list_len++;
+		last_readed = new(ListElement);
+	}
+
+    scroll_set_head(HEAD);
+    redraw_scroll();
+
+exit: //TODO: func?
+    clear_lines(1, 3);
+    setCursorPosition(0, EDITOR_POSY);
+    start_quote();
+}
+
+void menu_process(){
+    list_process();
+    redraw_menu();
+    scroll_set_head(HEAD);
+    redraw_scroll();
 }
 
 int main(){
@@ -227,7 +295,7 @@ int main(){
 
     loop {
     
-        clear_lines(BOTTOM_LINE, BOTTOM_LINE);
+        //clear_lines(BOTTOM_LINE, BOTTOM_LINE);
         setCursorPosition(0, BOTTOM_LINE);
         printf("Showing elements...");
 
@@ -256,6 +324,7 @@ int main(){
     setCursorVisibility(TRUE);
     restore_buffer();
     
+	list_free();
     free(last_readed);
 
     return 0;

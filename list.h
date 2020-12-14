@@ -47,19 +47,28 @@ compare_func(intcmp, int)
 compare_func(chrcmp, char)
 compare_func(shrcmp, short)
 
+int cmpdte(Date * a, Date * b){
+	if(a->y == b->y){
+		if(a->m == b->m)
+			return a->d - b->d;
+		return a->m - b->m;
+	}
+	return a->y - b->y;
+}
+
 // Группа  Зачетка  Пол  Форма  Рождение    Поступление  ЕГЭ  ФИО                              //
 // ......  ......    .     .    00.00.0000  00.00.0000   ...  ................................ //
 
 #define field(x, l, s, r, c, n, o, p) { x, l, s, r, c, n, offsetof(FileData, o), p }
 Field list_element_fields[] = {
-	field( 1,  6,             6, read_string     ,  strcmp, "Группа"     , group_name      , { allow_digits: TRUE }),
+	field( 1,  6,             6, read_string     ,  strcmp, "Группа"     , group_name      , { allow: ALLOW_DIGITS }),
 	field( 9,  6,   sizeof(int), read_fixed_int  ,  intcmp, "Зачетка"    , gradebook_number, {0}),
 	field(19,  1,             1, read_char       ,  chrcmp, "Пол"        , gender          , { values: "\2mf"  }),
 	field(25,  1,             1, read_char       ,  chrcmp, "Форма"      , education_form  , { values: "\3ozd" }),
-	field(30, 10,  sizeof(Date), read_fixed_date ,  intcmp, "Рождение  " , birth_date      , {0}),
-	field(42, 10,  sizeof(Date), read_fixed_date ,  intcmp, "Поступление", admission_date  , {0}),
+	field(30, 10,  sizeof(Date), read_fixed_date ,  cmpdte, "Рождение  " , birth_date      , {0}),
+	field(42, 10,  sizeof(Date), read_fixed_date ,  cmpdte, "Поступление", admission_date  , {0}),
 	field(55,  3, sizeof(short), read_fixed_short,  shrcmp, "ЕГЭ"        , USE_score       , {0}),
-    field(60, 32,            32, read_string     ,  strcmp, "ФИО"        , full_name       , { allow_digits: FALSE })
+    field(60, 32,            32, read_string     ,  strcmp, "ФИО"        , full_name       , { allow: ALLOW_NOTHING })
 };
 #undef field
 
@@ -72,9 +81,10 @@ void element_print(ListElement * cur){
     printf("   %03hu  %s\n", _->USE_score, &_->full_name[1]);
 }
 
-void element_print_to_txt(FILE * f, ListElement * cur){
+// returns negative number on falture
+int element_print_to_txt(FILE * f, ListElement * cur){
 	FileData * _ = &cur->data;
-	fprintf(
+	return fprintf(
         f, "%-6s %06u %c %c %02hu.%02hu.%04hu %02hu.%02hu.%04hu %3hu %s\n",
         &_->group_name[1], _->gradebook_number, _->gender, _->education_form,
         (short) _->birth_date.d, (short) _->birth_date.m, _->birth_date.y,
@@ -82,19 +92,31 @@ void element_print_to_txt(FILE * f, ListElement * cur){
         _->USE_score, &_->full_name[1]
     );
 }
-/*
-void element_read_from_txt(FILE * f, ListElement * cur){
+
+int element_read_from_txt(FILE * f, ListElement * cur){
 	FileData * _ = &cur->data;
-	fscanf(
-        f, "%6s %6u %c %c %2hhu.%2hhu.%4hu %2hhu.%2hhu.%4hu %3hu",
-        &_->group_name[1], &_->gradebook_number, &_->gender, &_->education_form,
-        &_->birth_date.d, &_->birth_date.m, &_->birth_date.y,
-        &_->admission_date.d, &_->admission_date.m, &_->admission_date.y,
-        _->USE_score
-    );
-    // &_->full_name[1]
+    {
+        int ret = fscanf( //TODO: fix bug with empty gender and form
+            f, "%6c %u %c %c %hhu.%hhu.%hu %hhu.%hhu.%hu %hu ",
+            &_->group_name[1], &_->gradebook_number, &_->gender, &_->education_form,
+            &_->birth_date.d, &_->birth_date.m, &_->birth_date.y,
+            &_->admission_date.d, &_->admission_date.m, &_->admission_date.y,
+            &_->USE_score
+        );
+        if(ret <= 0)
+            return -1;
+        _->group_name[0] = strlen(&_->group_name[1]);
+    }{
+        char * ret = fgets(&_->full_name[1], FILEDATA_NAME_LEN, f);
+        if(ret == NULL)
+            return -1;
+        unsigned char _len = strlen(&_->full_name[1]) - sizeof("\r\n") + 1; //TODO: validate input
+        _->full_name[1 + _len] = '\0';
+        _->full_name[0] = _len;
+    }
+    return 1;
 }
-*/
+
 void element_zerofill(ListElement * elem){
     memset(elem, 0, sizeof(ListElement));
     elem->data.gender = elem->data.education_form = ' ';
@@ -218,18 +240,94 @@ void merge_sort(unsigned char field_id){
     Field field = list_element_fields[field_id];
     field_to_compare_by_offset = field.offset;
     list_element_compare_func = field.comp_func;
-    /*
+    
+    //TODO: comment back? XD
     //TODO: wrap into func?
-    if((char *) field.read_func == (char *) read_string){
+    if((char *) field.read_func == (char *) read_string)
         field_to_compare_by_offset++;
-        field_to_compare_by_size--;
-    }
-    */
+    
     Cut cut = recursion(HEAD, list_len);
     HEAD = cut.first;
     TAIL = cut.last;
     HEAD->PREV = NULL;
     TAIL->NEXT = NULL;
+}
+
+void list_free(){
+    link_layer = SHOW;
+    for(ListElement * cur = HEAD; cur;){
+		ListElement * next = cur->NEXT;
+		free(cur);
+        cur = next;
+	}
+    heads[SHOW] = heads[SEARCH] = NULL;
+    tails[SHOW] = tails[SEARCH] = NULL;
+    list_len = 0;
+}
+
+void list_copy_to_search_layer(){
+    heads[SEARCH] = heads[SHOW];
+    tails[SEARCH] = tails[SHOW];
+    for(ListElement * cur = heads[SHOW]; cur; cur = cur->NEXT){
+        cur->link[1] = cur->link[0];
+        cur->link[3] = cur->link[2];
+    }
+    list_lengths[SEARCH] = list_lengths[SHOW];
+}
+
+typedef struct {
+	ListElement * link;
+	unsigned short score;
+} Excellent; //TODO: rename to smth meaningful
+
+void list_process(){
+    list_copy_to_search_layer();
+    link_layer = SEARCH;
+    merge_sort(0); // indexof(group) = 0
+    Excellent all_excellents[2 * 5] = { 0 };
+    
+    ListElement * cur = HEAD; //TODO: ListElement -> Excellent?
+    HEAD = TAIL = NULL;
+    list_len = 0;
+    while(cur){
+        unsigned short score = cur->data.USE_score;
+		Excellent * excellents = &all_excellents[(cur->data.gender == 'm') * 5];
+        for(unsigned char i = 0; i < 5; i++)
+            if(
+                !excellents[i].link ||
+                 excellents[i].score < score || (
+                        excellents[i].score == score &&
+                        cmpdte(&cur->data.admission_date, &excellents[i].link->data.admission_date) < 0
+                 )
+            ){
+                memmove(&excellents[i + 1], &excellents[i], sizeof(excellents[0]) * (5 - i - 1));
+                excellents[i].score = score;
+                excellents[i].link = cur;
+                break;
+            }
+        ListElement * next = cur->NEXT;
+        if(!next || strcmp(&next->data.group_name[1], &cur->data.group_name[1])){
+			for(char gender = 0; gender < 2; gender++){ //TODO: optimize
+				excellents = &all_excellents[gender * 5];
+				unsigned char i = 0;
+				if(excellents[i].link){
+					if(!HEAD){
+						HEAD = TAIL = excellents[i].link;
+						HEAD->PREV = NULL;
+						list_len = i = 1;
+					}
+					for(; i < 5 && excellents[i].link; i++){
+						connect(TAIL, excellents[i].link);
+						TAIL = excellents[i].link;
+					}
+				}
+			}
+            memset(all_excellents, 0, sizeof(all_excellents));
+        }
+		cur = next;
+    }
+    if(TAIL)
+        TAIL->NEXT = NULL;
 }
 /*
 int main(){

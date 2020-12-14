@@ -2,7 +2,7 @@
 #define CUSTOM_UI
 
 #define MENU_POSY	0
-#define EDITOR_POSY	2 // �1
+#define EDITOR_POSY	2 // +-1
 #define HEADER_POSY 4
 #define SCROLL_POSY 5
 #define E404_POSY	6
@@ -143,6 +143,8 @@ void menu_sort();
 void menu_search();
 void menu_close_search();
 void menu_export();
+void menu_import();
+void menu_process();
 
 #define item(name, func) { name, len(name) - 1, func }
 MenuItem menu_items[] = {
@@ -152,9 +154,9 @@ MenuItem menu_items[] = {
     item("Search", menu_search),
     item("Sort", menu_sort),
     item("Export", menu_export),
-    item("Import", empty_func),
+    item("Import", menu_import),
     item("Save", empty_func),
-    item("Process", empty_func),
+    item("Process", menu_process),
     item(" X ", menu_close_search)
 };
 

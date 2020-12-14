@@ -2,9 +2,9 @@
 #define CONIO_EXTENSIONS
 
 #include <stdio.h>
-#include <conio.h>
-#include <windows.h>
 #include "extended_stddef.h"
+
+#define EDITOR_POSY	2 //TODO: remove and get it from ui.h
 
 #define ARROW_UP 72
 #define ARROW_DOWN 80
@@ -14,6 +14,38 @@
 #define KEY_ESC 27
 #define KEY_BACKSPACE 8
 #define KEY_TAB 9
+
+#define READ_FUNC_SIGNATURE(name) char (* name)(char enter_dir, short posx, void * dest, struct field_struct field)
+typedef int (* CompareFunc) (void * a, void * b);
+
+typedef struct field_struct {
+    unsigned short posx; // 2
+    unsigned char len; // 1
+    unsigned char size; // 1
+    READ_FUNC_SIGNATURE(read_func); // 8
+    CompareFunc comp_func; // 8
+    char * name; // 8
+    size_t offset; // 8
+    union {
+        char values[8]; // 8
+        char allow;
+#define ALLOW_NOTHING   0
+#define ALLOW_DIGITS    1
+#define ALLOW_SPECIAL   2
+//#define ALLOW_SPACES    4
+    } prop;
+} Field;
+
+#ifdef LINUX
+    #define read_char NULL
+    #define read_string NULL
+    #define read_fixed_int NULL
+    #define read_fixed_short NULL
+    #define read_fixed_date NULL
+#else
+
+#include <conio.h>
+#include <windows.h>
 
 #define BACKGROUND_WHITE (BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED)
 #define BACKGROUND_GRAY BACKGROUND_INTENSITY
@@ -67,33 +99,14 @@ void repeat(short from_x, short from_y, DWORD _len, char c){
     FillConsoleOutputCharacter(stdout_handle, c, _len, coord, &written);
 }
 
-#define READ_FUNC_SIGNATURE(name) char (* name)(char enter_dir, short posx, void * dest, struct field_struct field)
-typedef int (* CompareFunc) (void * a, void * b);
-
-typedef struct field_struct {
-    unsigned short posx; // 2
-    unsigned char len; // 1
-    unsigned char size; // 1
-    READ_FUNC_SIGNATURE(read_func); // 8
-    CompareFunc comp_func; // 8
-    char * name; // 8
-    size_t offset; // 8
-    union {
-        char values[8]; // 7
-        char allow_digits; // 1
-    } prop;
-} Field;
-
-//typedef READ_FUNC_SIGNATURE(ReadFunc);
-
-#define EDITOR_POSY	2 //TODO: remove and get it from ui.h
-
 char read_string(char enter_dir, short posx, void * dest, Field field){
     
     #define dest ((char *) dest)
 
     char buffer_size = field.len;
-    char allow_digits = field.prop.allow_digits;
+    char allow_digits = field.prop.allow & ALLOW_DIGITS;
+    char allow_special = field.prop.allow & ALLOW_SPECIAL;
+    //char allow_spaces = field.prop.allow & ALLOW_SPACES;
 
     char * buffer = &dest[1];
     unsigned char last_char = dest[0];
@@ -156,8 +169,9 @@ char read_string(char enter_dir, short posx, void * dest, Field field){
                 (allow_digits && ch >= '0' && ch <= '9') ||
                 (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
                 (ch >= 'à' && ch <= 'ÿ') || (ch >= 'À' && ch <= 'ß') ||
-                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-                (ch == ' ' && (cursor_pos != 0 && buffer[cursor_pos - 1] != ' '))
+                (allow_special && (ch == '.' || ch == ':' || ch == '/' || ch == '\\')) ||
+                //     ,      
+                (/*allow_spaces &&*/ ch == ' ' && (cursor_pos != 0 && buffer[cursor_pos - 1] != ' '))
             ){
 
                 if(ch == ' ' && buffer[cursor_pos] == ' '){
@@ -165,7 +179,7 @@ char read_string(char enter_dir, short posx, void * dest, Field field){
                     continue;
                 }
 
-                //TODO: think: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ char ï¿½ buffer ï¿½ï¿½ï¿½ '\0'?
+                //TODO: think:    char  buffer  '\0'?
                 if(last_char == buffer_size){
                     setCursorPosition(posx, EDITOR_POSY + 1);
                     puts("Too many letters!");
@@ -395,5 +409,7 @@ exit:
 
     #undef dest
 }
+
+#endif // ifndef LINUX
 
 #endif
