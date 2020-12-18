@@ -7,6 +7,7 @@
 #include "extended_conio.h"
 
 #define FILEDATA_NAME_LEN 32
+#define AUTOSAVE_FILE_NAME "test.bin"
 
 typedef struct {
     char group_name[6 + 2]; // 8
@@ -22,7 +23,8 @@ typedef struct list_element {
     struct list_element * link[4];
 } ListElement;
 
-enum { SHOW = 0, SEARCH = 1 } link_layer = SHOW;
+typedef enum { SHOW = 0, SEARCH = 1 } ListLinkLayer;
+ListLinkLayer link_layer = SHOW;
 
 #define DIR(d) link[d * 2 + link_layer]
 #define PREV   link[0 + link_layer]
@@ -71,6 +73,26 @@ Field list_element_fields[] = {
     field(60, 32,            32, read_string     ,  strcmp, "ÔÈÎ"        , full_name       , { allow: ALLOW_NOTHING })
 };
 #undef field
+
+ListElement * first_alloc_begin = NULL;
+ListElement * first_alloc_end = NULL;
+ListElement * freeded_elements = NULL;
+ListElement * last_readed;
+
+ListElement * list_element_new(){
+	if(freeded_elements != NULL){
+		ListElement * popped = freeded_elements;
+		freeded_elements = popped->link[2]; // 2 = SHOW NEXT
+		return popped;
+	}
+	return new(ListElement);
+}
+
+void list_element_free(ListElement * el){
+	ListElement * head = freeded_elements;
+	freeded_elements = el;
+	el->link[2] = head; // 2 = SHOW NEXT
+}
 
 void element_print(ListElement * cur){
 	FileData * _ = &cur->data;
@@ -145,6 +167,60 @@ void list_add(ListElement * el){
     list_len++;
 }
 
+size_t get_file_size(FILE * f){
+	fseek(f, 0, SEEK_END);
+	size_t file_size = ftell(f);
+	rewind(f);
+	return file_size;
+}
+
+void list_autoload(){
+	FILE * file = fopen(AUTOSAVE_FILE_NAME, "rb");
+
+	if(file){
+				
+		size_t file_size = get_file_size(file);
+		//TODO: needs UI
+        if(file_size % sizeof(FileData) != 0)
+			puts(AUTOSAVE_FILE_NAME " seems to be corrupted");
+		file_size /= sizeof(FileData);
+
+		first_alloc_begin = malloc((file_size + 1) * sizeof(ListElement));
+		first_alloc_end = first_alloc_begin + file_size;
+		last_readed = first_alloc_begin;
+		while(fread(last_readed, sizeof(FileData), 1, file)){
+			list_add(last_readed);
+			last_readed++;
+		}
+
+	} else {
+		first_alloc_begin = last_readed = new(ListElement);
+		first_alloc_end = first_alloc_begin + 1;
+	}
+
+	fclose(file);
+}
+
+void list_autosave(){
+    FILE * file = fopen(AUTOSAVE_FILE_NAME, "wb");
+	//TODO: needs UI
+    if(!file){
+        puts("can't open " AUTOSAVE_FILE_NAME " for writing");
+		return;
+	}
+
+	for(ListElement * cur = HEAD; cur; cur = cur->NEXT)
+		if(!fwrite(&cur->data, sizeof(FileData), 1, file)){
+            //TODO: needs UI
+			puts("can't write to file");
+			goto exit;
+		}
+
+exit:
+	fflush(file);
+	fclose(file);
+}
+
 void list_remove(ListElement * el){
     
     if(el == HEAD){
@@ -164,7 +240,7 @@ void list_remove(ListElement * el){
     list_len--;
     
     if(link_layer == SHOW)
-        free(el);
+        list_element_free(el);
 }
 
 CompareFunc list_element_compare_func;
@@ -257,12 +333,32 @@ void list_free(){
     link_layer = SHOW;
     for(ListElement * cur = HEAD; cur;){
 		ListElement * next = cur->NEXT;
-		free(cur);
+		list_element_free(cur);
         cur = next;
 	}
     heads[SHOW] = heads[SEARCH] = NULL;
     tails[SHOW] = tails[SEARCH] = NULL;
     list_len = 0;
+}
+
+void list_release_memory(){
+    #define free_if_not_freeded_yet(el) if(el <= first_alloc_begin && el > first_alloc_end) free(el)
+    link_layer = SHOW;
+	TAIL->NEXT = freeded_elements;
+    for(ListElement * cur = HEAD; cur;){
+		ListElement * next = cur->NEXT;
+		free_if_not_freeded_yet(cur);
+        cur = next;
+	}
+    free_if_not_freeded_yet(last_readed);
+	/*
+	first_alloc_begin = first_alloc_end = 0;
+	freeded_elements = last_readed = NULL;
+    heads[SHOW] = heads[SEARCH] = NULL;
+    tails[SHOW] = tails[SEARCH] = NULL;
+    list_len = 0;
+	*/
+    #undef free_if_not_freeded_yet
 }
 
 void list_copy_to_search_layer(){
@@ -274,11 +370,6 @@ void list_copy_to_search_layer(){
     }
     list_lengths[SEARCH] = list_lengths[SHOW];
 }
-
-typedef struct {
-	ListElement * link;
-	unsigned short score;
-} Excellent; //TODO: rename to smth meaningful
 
 int list_process_cmp(FileData * a, FileData * b){
     int ret = strcmp(a->group_name, b->group_name);

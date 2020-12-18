@@ -2,11 +2,14 @@
 #include "list.h"
 
 int main(){
-	ListElement * last_readed = new(ListElement);
 
-	FILE * file = fopen("test.txt", "r");
-    if(!file)
-        puts("can't open the file");
+	
+	/*
+	file = fopen("test.txt", "r");
+    if(!file){
+        puts("can't open test.txt for reading");
+		return 1;
+	}
 	
 	link_layer = SHOW;
 	HEAD = TAIL = NULL;
@@ -25,19 +28,16 @@ int main(){
 		last_readed = new(ListElement);
 	}
 
-	//for(ListElement * cur = HEAD; cur; cur = cur->NEXT)
-	//	element_print(cur);
-
-	list_process();
+	fclose(file);
 	
-	// list_free
-	for(ListElement * cur = HEAD; cur;){
-		element_print(cur);
-		ListElement * prev = cur;
-		cur = cur->NEXT;
-		free(prev);
-	}
+	list_autosave();
+	*/
 
-	free(last_readed);
+	list_autoload();
+
+	for(ListElement * cur = HEAD; cur; cur = cur->NEXT)
+		element_print(cur);
+
+	list_release_memory();
 	return 0;
 }

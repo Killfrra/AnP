@@ -1,10 +1,8 @@
-// ??????????:
-// ??????? ?????? - ??? list_element ??? ?????? element
-// ??????? ???? - ??? menu_item ??? ?????? item
-// ???????????????? ?????? - ??? scroll
-// ?????????????? ???????? - editor
-// ?????????? ? ?????? ????????? ??? "?????_????????"
-// ???? ???? ???? ? ??????? (pos), ?? ?? ????????
+// Agreement:
+// Main is a bridge between UI, List and Quotes
+// Defines should be undefined as soon as they not needed anymore
+// Naming format: class_name_method
+// And remember, not a word in Russian!
 
 //#include <stdio.h>
 #include <windows.h>
@@ -12,8 +10,6 @@
 #include "extended_stddef.h"
 #include "list.h"
 #include "ui.h"
-
-ListElement * last_readed;
 
 #define BOTTOM_LINE (buffer_info.dwSize.Y - 1)
 #define RIGHT_CHAR  (buffer_info.dwSize.X - 1)
@@ -30,7 +26,7 @@ void menu_add(){
         list_add(last_readed);
         if(last_readed == HEAD)
             scroll_set_head(HEAD);
-        last_readed = new(ListElement);
+        last_readed = list_element_new();
         element_zerofill(last_readed);
     }
     redraw_scroll();
@@ -55,7 +51,14 @@ void menu_remove(){
             scroll_selected_element = to_delete->PREV;
         }
 
-        list_remove(to_delete);
+        if(link_layer == SEARCH){
+            list_remove(to_delete);
+            link_layer = SHOW;
+            list_remove(to_delete);
+            link_layer = SEARCH;
+        } else
+            list_remove(to_delete);
+
         redraw_scroll();
     } else {
         setCursorPosition(0, BOTTOM_LINE);
@@ -245,14 +248,8 @@ void menu_import(){
     list_free();
 
     while(element_read_from_txt(file, last_readed) >= 0){
-		if(HEAD == NULL)
-			HEAD = TAIL = last_readed;
-		else {
-			connect(TAIL, last_readed);
-			TAIL = last_readed;
-		}
-		list_len++;
-		last_readed = new(ListElement);
+		list_add(last_readed);
+		last_readed = list_element_new();
 	}
 
     scroll_set_head(HEAD);
@@ -281,7 +278,8 @@ int main(){
     GetConsoleCursorInfo(stdout_handle, &cursor_info);
     adjust_buffer();
     
-    last_readed = new(ListElement);
+    list_autoload(); // also allocs last_readed
+    scroll_set_head(HEAD);
     element_zerofill(last_readed);
     
     setCursorVisibility(FALSE);
@@ -324,8 +322,8 @@ int main(){
     setCursorVisibility(TRUE);
     restore_buffer();
     
-	list_free();
-    free(last_readed);
+    list_autosave();
+	list_release_memory();
 
     return 0;
 }
