@@ -161,17 +161,17 @@ MenuItem menu_items[] = {
 };
 
 signed char selected_menu_item = 0;
-int menu_len = 0;
 void redraw_menu(){
     setCursorPosition( 0, 0);
     SetConsoleTextAttribute(stdout_handle, BACKGROUND_BLUE);
-    unsigned char menu_len = len(menu_items) - (link_layer == SHOW);
-    for(unsigned char i = 0; i < menu_len; i++){
+    for(unsigned char i = 0; i < len(menu_items); i++){
         if(i == selected_menu_item){
             SetConsoleTextAttribute(stdout_handle, BACKGROUND_GREEN);
             printf(" %s ", menu_items[i].name);
             SetConsoleTextAttribute(stdout_handle, BACKGROUND_BLUE);
-        } else
+        } else if(i == len(menu_items) - 1 && link_layer == SHOW)
+            printf("     ");
+        else
             printf(" %s ", menu_items[i].name);
     }
     SetConsoleTextAttribute(stdout_handle, buffer_info.wAttributes);

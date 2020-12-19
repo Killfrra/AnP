@@ -100,7 +100,7 @@ void element_print(ListElement * cur){
     print_date(_->birth_date);
     printf("  ");
     print_date(_->admission_date);
-    printf("   %03hu  %-80s\n", _->USE_score, &_->full_name[1]);
+    printf("   %03hu  %-79s\n", _->USE_score, &_->full_name[1]); //TODO: unhardcode name len (80)
 }
 
 // returns negative number on falture
@@ -125,23 +125,30 @@ int element_read_from_txt(FILE * f, ListElement * cur){
             &_->admission_date.d, &_->admission_date.m, &_->admission_date.y,
             &_->USE_score
         );
+        
         if(ret <= 0)
             return -1;
-        _->group_name[0] = strlen(&_->group_name[1]);
+        
+        unsigned char i = 6;
+        for(; i > 0 && _->group_name[i] == ' '; i--);
+        _->group_name[0] = i;
     }{
         char * ret = fgets(&_->full_name[1], FILEDATA_NAME_LEN, f);
         if(ret == NULL)
             return -1;
-        unsigned char _len = strlen(&_->full_name[1]) - sizeof("\r\n") + 1; //TODO: validate input
-        _->full_name[1 + _len] = '\0';
-        _->full_name[0] = _len;
+
+        unsigned char i = 1;
+        for(; i < FILEDATA_NAME_LEN - 1 && !(_->full_name[i] == '\r' || _->full_name[i] == '\n' || _->full_name[i] == '\0'); i++);
+        _->full_name[i] = '\0';
+        _->full_name[0] = i - 1;
     }
     return 1;
 }
 
 void element_zerofill(ListElement * elem){
     memset(elem, 0, sizeof(ListElement));
-    elem->data.gender = elem->data.education_form = ' ';
+    elem->data.gender = 'm';
+    elem->data.education_form = 'd';
 }
 
 ListElement * heads[2] = { 0 };
@@ -342,15 +349,21 @@ void list_free(){
 }
 
 void list_release_memory(){
-    #define free_if_not_freeded_yet(el) if(el <= first_alloc_begin && el > first_alloc_end) free(el)
-    link_layer = SHOW;
-	TAIL->NEXT = freeded_elements;
-    for(ListElement * cur = HEAD; cur;){
+    #define link_layer SHOW
+    if(TAIL){
+        // freeded_elements = HEAD -> freeded_elements
+        // becouse we cannot connect anything to the untracked end of freeded_elements
+	    TAIL->NEXT = freeded_elements;
+        freeded_elements = HEAD;
+    }
+    // last_readed -> freeded_elements
+    last_readed->NEXT = freeded_elements;
+    for(ListElement * cur = last_readed; cur;){
 		ListElement * next = cur->NEXT;
-		free_if_not_freeded_yet(cur);
+		if(cur <= first_alloc_begin && cur > first_alloc_end)
+            free(cur);
         cur = next;
 	}
-    free_if_not_freeded_yet(last_readed);
 	/*
 	first_alloc_begin = first_alloc_end = 0;
 	freeded_elements = last_readed = NULL;
@@ -358,7 +371,7 @@ void list_release_memory(){
     tails[SHOW] = tails[SEARCH] = NULL;
     list_len = 0;
 	*/
-    #undef free_if_not_freeded_yet
+    #undef link_layer
 }
 
 void list_copy_to_search_layer(){

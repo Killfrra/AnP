@@ -169,7 +169,7 @@ char read_string(char enter_dir, short posx, void * dest, Field field){
                 (allow_digits && ch >= '0' && ch <= '9') ||
                 (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
                 (ch >= 'à' && ch <= 'ÿ') || (ch >= 'À' && ch <= 'ß') ||
-                (allow_special && (ch == '.' || ch == ':' || ch == '/' || ch == '\\')) ||
+                (allow_special && (ch == '.' || ch == ':' || ch == '/' || ch == '\\' || ch == '_')) ||
                 //     ,      
                 (/*allow_spaces &&*/ ch == ' ' && (cursor_pos != 0 && buffer[cursor_pos - 1] != ' '))
             ){
