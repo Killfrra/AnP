@@ -18,22 +18,23 @@
 #define READ_FUNC_SIGNATURE(name) char (* name)(char enter_dir, short posx, void * dest, struct field_struct field)
 typedef int (* CompareFunc) (void * a, void * b);
 
+/* Структура, применяемая для описания параметров полей элемента списка. Используется редактором элементов и функциями ввода */
 typedef struct field_struct {
-    unsigned short posx; // 2
-    unsigned char len; // 1
-    unsigned char size; // 1
-    READ_FUNC_SIGNATURE(read_func); // 8
-    CompareFunc comp_func; // 8
-    char * name; // 8
-    size_t offset; // 8
-    union {
-        char values[8]; // 8
-        char allow;
-#define ALLOW_NOTHING   0
-#define ALLOW_DIGITS    1
-#define ALLOW_SPECIAL   2
-//#define ALLOW_SPACES    4
-    } prop;
+	unsigned short posx;// Позиция на экране
+	unsigned char len;	// Длинна на экране
+	unsigned char size;	// Размер в памяти
+	READ_FUNC_SIGNATURE(read_func); // Указатель на функцию чтения
+	CompareFunc comp_func;	// Указатель на функцию для сравнения
+	char * name;		    // Название поля
+	size_t offset;		    // Смещение относительно начала элемента
+	union {
+		char values[8];	// Допустимые значения для char’ов
+		char allow;		// Допустимые значения для строк
+		#define ALLOW_NOTHING   0   // Ничего не разрешать кроме букв
+		#define ALLOW_DIGITS    1   // Разрешить цифры
+		#define ALLOW_SPECIAL   2   // Разрешить специальные символы
+      //#define ALLOW_SPACES    4
+	} prop; // Дополнительные параметры для функций чтения
 } Field;
 
 #ifdef LINUX

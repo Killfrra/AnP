@@ -272,7 +272,7 @@ Cut merge(Cut l1, Cut l2){
     cur_[!min] = l[!min].first;
     
     while(1){
-        unsigned char min = list_element_compare(cur_[0], cur_[1]) >= 0;
+        min = list_element_compare(cur_[0], cur_[1]) >= 0;
         connect(cur, cur_[min]);
         cur = cur_[min];
         if(cur == l[min].last){
@@ -311,8 +311,7 @@ Cut recursion(ListElement * first, int len){
             cut.first = cut.last;
             cut.last = tmp;
 
-            cut.first->NEXT = cut.last;
-            cut.last->PREV = cut.first;
+            connect(cut.first, cut.last);
         }
         return cut;
     }
