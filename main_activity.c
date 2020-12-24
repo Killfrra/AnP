@@ -69,6 +69,7 @@ void menu_remove(){
             scroll_selected_element = to_delete->PREV;
         }
 
+        //TODO: remove from booth!
         if(link_layer == SEARCH){
             list_remove(to_delete);
             link_layer = SHOW;
@@ -178,6 +179,8 @@ void menu_search(){
             if(memcmp((char *) cur + field_offset, field_value_ptr, field_size) == 0)
                 list_add(cur);
 
+    //TODO: '-' mode
+
     redraw_menu();
     scroll_set_head(heads[SEARCH]);
     redraw_scroll();
@@ -240,11 +243,11 @@ void menu_export(){
     
     fflush(file);
     fclose(file);
+    print_to_status("Successfully exported");
 
 exit:
     clear_lines(1, 3);
     start_quote();
-    print_to_status("Successfully exported");
 }
 
 void menu_import(){
@@ -271,11 +274,11 @@ void menu_import(){
     element_zerofill(last_readed);
     scroll_set_head(HEAD);
     redraw_scroll();
+    print_to_status("Successfully imported");
 
 exit: //TODO: func?
     clear_lines(1, 3);
     start_quote();
-    print_to_status("Successfully imported");
 }
 
 void menu_process(){

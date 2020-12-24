@@ -337,11 +337,7 @@ void merge_sort(unsigned char field_id){
 
 void list_free(){
     link_layer = SHOW;
-    for(ListElement * cur = HEAD; cur;){
-		ListElement * next = cur->NEXT;
-		list_element_free(cur);
-        cur = next;
-	}
+    freeded_elements = heads[SHOW]; //TODO: test
     heads[SHOW] = heads[SEARCH] = NULL;
     tails[SHOW] = tails[SEARCH] = NULL;
     list_len = 0;
