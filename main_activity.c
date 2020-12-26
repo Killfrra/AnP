@@ -108,11 +108,12 @@ void menu_sort(){
         //scroll_set_head(HEAD);
         ListElement * cur = scroll_selected_element;
         for(unsigned int i = 0; i < scroll_selected_element_pos; i++){
-            if(!cur->PREV){
+            if(cur->PREV)
+                cur = cur->PREV;
+            else {
                 scroll_selected_element_pos = i;
                 break;
-            } else
-                cur = cur->PREV;
+            }
         }
         scroll_first_element_on_screen = cur;
         //TODO: clean_lines?

@@ -33,6 +33,7 @@ void redraw_scroll(){
         ListElement * cur = scroll_first_element_on_screen;
         unsigned int drawn = 0;
         for(; cur && drawn < (scroll_last_line - scroll_first_line + 1); drawn++){
+            //TODO: think, why can't we just print and let scroll_scroll to highilght selected?
             if(drawn == scroll_selected_element_pos){
                 SetConsoleTextAttribute(stdout_handle, BACKGROUND_WHITE);
                 element_print(cur);
@@ -41,7 +42,7 @@ void redraw_scroll(){
                 element_print(cur);
             cur = cur->NEXT;
         }
-        setColor(0, scroll_selected_element_pos + scroll_first_line, buffer_info.dwSize.X - 1, BACKGROUND_WHITE);
+        //setColor(0, scroll_selected_element_pos + scroll_first_line, buffer_info.dwSize.X - 1, BACKGROUND_WHITE);
         
         setCursorPosition(buffer_info.dwSize.X - 1, scroll_first_line);
         if(scroll_first_element_on_screen != HEAD)
