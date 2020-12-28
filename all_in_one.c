@@ -1,12 +1,6 @@
 #ifndef CUSTOM_DEFINES 
 #define CUSTOM_DEFINES
 
-#include <stdio.h>
-#include <conio.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
-#include <windows.h>
 
 #define loop while(1)
 #define new(T) malloc(sizeof(T))
@@ -24,11 +18,11 @@ void print_date(Date date){
 }
 
 #endif
-
 #ifndef CONIO_EXTENSIONS
 #define CONIO_EXTENSIONS
 
-#define EDITOR_POSY	2 //TODO: remove and get it from ui.h
+
+#define EDITOR_POSY	2 
 
 #define ARROW_UP 72
 #define ARROW_DOWN 80
@@ -69,6 +63,7 @@ typedef struct field_struct {
     #define read_fixed_date NULL
 #else
 
+
 #define BACKGROUND_WHITE (BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED)
 #define BACKGROUND_GRAY BACKGROUND_INTENSITY
 
@@ -95,7 +90,6 @@ void clear_lines(short from, short to){
 
 CONSOLE_SCREEN_BUFFER_INFO orig_buffer_info;
 void adjust_buffer(){
-    //TODO: ??????, ??? ? ? ????? ??????
     //SMALL_RECT rect = { 32, 32, 128, 32 };
     //SetConsoleWindowInfo(stdout_handle, TRUE, &rect);
     GetConsoleScreenBufferInfo(stdout_handle, &orig_buffer_info);
@@ -201,7 +195,6 @@ char read_string(char enter_dir, short posx, void * dest, Field field){
                     continue;
                 }
 
-                //TODO: think: ќќќќќќќќќ ќќ ќќќќќќќќќ char ќ buffer ќќќ '\0'?
                 if(last_char == buffer_size){
                     setCursorPosition(posx, EDITOR_POSY + 1);
                     puts("Too many letters!");
@@ -439,6 +432,7 @@ exit:
 #ifndef CUSTOM_LIST
 #define CUSTOM_LIST
 
+
 #define FILEDATA_NAME_LEN 32
 #define AUTOSAVE_FILE_NAME "test.bin"
 
@@ -453,7 +447,7 @@ typedef struct {
 
 typedef struct list_element {
     FileData data;
-    struct list_element * link[4];
+    struct list_element * link[4]; // 4 * 4
 } ListElement;
 
 typedef enum { SHOW = 0, SEARCH = 1 } ListLinkLayer;
@@ -533,7 +527,7 @@ void element_print(ListElement * cur){
     print_date(_->birth_date);
     printf("  ");
     print_date(_->admission_date);
-    printf("   %03hu  %-79s\n", _->USE_score, &_->full_name[1]); //TODO: unhardcode name len (80)
+    printf("   %03hu  %-79s\n", _->USE_score, &_->full_name[1]); 
 }
 
 // returns negative number on falture
@@ -551,7 +545,7 @@ int element_print_to_txt(FILE * f, ListElement * cur){
 int element_read_from_txt(FILE * f, ListElement * cur){
 	FileData * _ = &cur->data;
     {
-        int ret = fscanf( //TODO: fix bug with empty gender and form
+        int ret = fscanf( 
             f, "%6c %u %c %c %hhu.%hhu.%hu %hhu.%hhu.%hu %hu ",
             &_->group_name[1], &_->gradebook_number, &_->gender, &_->education_form,
             &_->birth_date.d, &_->birth_date.m, &_->birth_date.y,
@@ -620,7 +614,6 @@ void list_autoload(){
 	if(file){
 				
 		size_t file_size = get_file_size(file);
-		//TODO: needs UI
         if(file_size % sizeof(FileData) != 0)
 			puts(AUTOSAVE_FILE_NAME " seems to be corrupted");
 		file_size /= sizeof(FileData);
@@ -633,17 +626,17 @@ void list_autoload(){
 			last_readed++;
 		}
 
+        fclose(file);
+
 	} else {
 		first_alloc_begin = last_readed = new(ListElement);
 		first_alloc_end = first_alloc_begin + 1;
 	}
 
-	fclose(file);
 }
 
 void list_autosave(){
     FILE * file = fopen(AUTOSAVE_FILE_NAME, "wb");
-	//TODO: needs UI
     if(!file){
         puts("can't open " AUTOSAVE_FILE_NAME " for writing");
 		return;
@@ -651,7 +644,6 @@ void list_autosave(){
 
 	for(ListElement * cur = HEAD; cur; cur = cur->NEXT)
 		if(!fwrite(&cur->data, sizeof(FileData), 1, file)){
-            //TODO: needs UI
 			puts("can't write to file");
 			goto exit;
 		}
@@ -709,6 +701,15 @@ Cut merge(Cut l1, Cut l2){
         connect(cur, cur_[min]);
         cur = cur_[min];
         if(cur == l[min].last){
+            /*
+            Q: why doesn't it fails when cur_[!min] == NULL
+            A: cur_[!min] is never null
+            A: Потому что когда хоть в одном из списков встречается последний элемент...
+            В эту функцию всегда передаются два отрезка, каждый из которых в длинну > 3
+            При этом первый может быть короче второго на 1 элемент, но не наоборот
+            И второй отрезок идёт после первого в исходном списке
+            A: Но, да если вызвать функцию отдельно с некорректными данными, она может упасть
+            */
             connect(cur, cur_[!min]);
             cut.last = l[!min].last;
             return cut;
@@ -756,8 +757,6 @@ void merge_sort(unsigned char field_id){
     field_to_compare_by_offset = field.offset;
     list_element_compare_func = field.comp_func;
     
-    //TODO: comment back? XD
-    //TODO: wrap into func?
     if((char *) field.read_func == (char *) read_string)
         field_to_compare_by_offset++;
     
@@ -770,11 +769,7 @@ void merge_sort(unsigned char field_id){
 
 void list_free(){
     link_layer = SHOW;
-    for(ListElement * cur = HEAD; cur;){
-		ListElement * next = cur->NEXT;
-		list_element_free(cur);
-        cur = next;
-	}
+    freeded_elements = heads[SHOW]; 
     heads[SHOW] = heads[SEARCH] = NULL;
     tails[SHOW] = tails[SEARCH] = NULL;
     list_len = 0;
@@ -897,8 +892,10 @@ int main(){
 }
 */
 #endif
+
 #ifndef QUOTES_ENGINE
 #define QUOTES_ENGINE
+
 
 #define roll(i, len) (i = (i + 1) % len)
 #define len(x)  (sizeof(x) / sizeof((x)[0]))
@@ -998,7 +995,6 @@ event_quote(mistake)
 event_quote(remove)
 
 #endif
-
 #ifndef CUSTOM_UI
 #define CUSTOM_UI
 
@@ -1007,6 +1003,7 @@ event_quote(remove)
 #define HEADER_POSY 4
 #define SCROLL_POSY 5
 #define E404_POSY	6
+
 
 ListElement * scroll_first_element_on_screen = NULL;
 ListElement * scroll_selected_element = NULL;
@@ -1038,7 +1035,7 @@ void redraw_scroll(){
                 element_print(cur);
             cur = cur->NEXT;
         }
-        setColor(0, scroll_selected_element_pos + scroll_first_line, buffer_info.dwSize.X - 1, BACKGROUND_WHITE);
+        //setColor(0, scroll_selected_element_pos + scroll_first_line, buffer_info.dwSize.X - 1, BACKGROUND_WHITE);
         
         setCursorPosition(buffer_info.dwSize.X - 1, scroll_first_line);
         if(scroll_first_element_on_screen != HEAD)
@@ -1108,7 +1105,7 @@ char draw_editor(ListElement * elem){
                 current_field = len(list_element_fields) - 1;
             else
                 current_field--;
-        } else if(ret == KEY_ESC || ret == KEY_ENTER) //TODO: only esc
+        } else if(ret == KEY_ESC || ret == KEY_ENTER) 
             break;
         else if(current_field == len(list_element_fields) - 1){
             if(ret == KEY_ENTER)
@@ -1120,7 +1117,7 @@ char draw_editor(ListElement * elem){
     }
 
     setCursorVisibility(FALSE);
-    clear_lines(1, 3);
+    clear_lines(EDITOR_POSY - 1, EDITOR_POSY + 1);
 
     return ret;
 }
@@ -1240,12 +1237,13 @@ char header_select_column(unsigned char * in_out){
 // Naming format: class_name_method
 // And remember, not a word in Russian!
 
+
 #define BOTTOM_LINE (buffer_info.dwSize.Y - 1)
 #define RIGHT_CHAR  (buffer_info.dwSize.X - 1)
 
 void print_to_status(char * str){
     setCursorPosition(0, BOTTOM_LINE);
-    printf(str);
+    printf(" %-50s", str);
 }
 
 void print_error_or_mistake(char * str){
@@ -1264,7 +1262,7 @@ void menu_add(){
     if(ret == KEY_ENTER){
         for(ListElement * cur = HEAD; cur; cur = cur->NEXT)
             if(cur->data.gradebook_number == last_readed->data.gradebook_number){
-                print_error_or_mistake("KEY ALREADY EXIST");
+                print_error_or_mistake("Key already exist!");
                 return;
             }
         list_add(last_readed);
@@ -1272,7 +1270,6 @@ void menu_add(){
             scroll_set_head(HEAD);
         last_readed = list_element_new();
         element_zerofill(last_readed);
-        //TODO: clean_lines?
         start_quote();
         redraw_scroll();
         print_to_status("Element added");
@@ -1298,7 +1295,6 @@ void menu_remove(){
             scroll_selected_element = to_delete->PREV;
         }
 
-        //TODO: remove from booth
         if(link_layer == SEARCH){
             list_remove(to_delete);
             link_layer = SHOW;
@@ -1317,7 +1313,6 @@ void menu_remove(){
 void menu_edit(){
     if(scroll_selected_element){
         print_to_status("Editing element. Changes applied immidiately");
-        //TODO: option to discard changes?
         draw_editor(scroll_selected_element);
         edit_quote();
         redraw_scroll();
@@ -1330,21 +1325,24 @@ unsigned char sort_by_field = 0;
 void menu_sort(){
     if(list_len > 1){
 
-        if(header_select_column(&sort_by_field) == KEY_ESC)
+        print_to_status("Use arrow keys to select table row to sort by");
+        if(header_select_column(&sort_by_field) == KEY_ESC){
+            print_to_status("Aborted. Showing elements");
             return;
+        }
 
         merge_sort(sort_by_field);
         //scroll_set_head(HEAD);
         ListElement * cur = scroll_selected_element;
         for(unsigned int i = 0; i < scroll_selected_element_pos; i++){
-            if(!cur->PREV){
+            if(cur->PREV)
+                cur = cur->PREV;
+            else {
                 scroll_selected_element_pos = i;
                 break;
-            } else
-                cur = cur->PREV;
+            }
         }
         scroll_first_element_on_screen = cur;
-        //TODO: clean_lines?
         start_quote();
         redraw_scroll();
         print_to_status("List sorted");
@@ -1356,8 +1354,11 @@ unsigned char search_by_field = 0;
 void menu_search(){
     redraw_header(search_by_field);
     
-    if(header_select_column(&search_by_field) == KEY_ESC)
+    print_to_status("Use arrow keys to select table row to search by");
+    if(header_select_column(&search_by_field) == KEY_ESC){
+        print_to_status("Aborted. Showing elements");
         goto exit;
+    }
 
     Field field = list_element_fields[search_by_field];
     setCursorPosition(0, EDITOR_POSY);
@@ -1369,10 +1370,10 @@ void menu_search(){
     setCursorVisibility(TRUE);
 
     char ret = ARROW_RIGHT;
-    char * field_value_ptr = (char * ) last_readed + field.offset; //TODO: rename
+    char * field_value_ptr = (char * ) last_readed + field.offset; 
     Field mode_field = { prop: { values: "\3o+-" } };
 
-    loop { //TODO: make shorter
+    loop { 
         ret = field.read_func(ret, len("Value: ") - 1, field_value_ptr, field);
         if(ret == KEY_ENTER)
             break;
@@ -1391,7 +1392,6 @@ void menu_search(){
     char field_size = field.size;
     size_t field_offset = field.offset;
 
-    //TODO: wrap into func
     if((char *) field.read_func == (char *) read_string){
         field_size = field_value_ptr[0];
         field_offset++;
@@ -1408,7 +1408,6 @@ void menu_search(){
             if(memcmp((char *) cur + field_offset, field_value_ptr, field_size) == 0)
                 list_add(cur);
 
-    //TODO: '-' mode
 
     redraw_menu();
     scroll_set_head(heads[SEARCH]);
@@ -1424,7 +1423,6 @@ void menu_close_search(){
     link_layer = SHOW;
     selected_menu_item = 0;
     redraw_menu();
-    //TODO: clean_lines?
     start_quote();
     scroll_set_head(HEAD);
     redraw_scroll();
@@ -1432,6 +1430,7 @@ void menu_close_search(){
 }
 
 char read_filename(char * filename){
+    clear_lines(EDITOR_POSY - 1, EDITOR_POSY + 1);
     setCursorPosition(0, EDITOR_POSY);
     printf("Filename: ");
 
@@ -1441,8 +1440,10 @@ char read_filename(char * filename){
     int ret = ARROW_RIGHT;
     loop {
         ret = read_string(ret, len("Filename: ") - 1, filename, file_field);
-        if(ret == KEY_ENTER || ret == KEY_ESC)
+        if(ret == KEY_ENTER || ret == KEY_ESC){
+            print_to_status("Aborted. Showing elements");
             goto exit;
+        }
     }
 
 exit:
@@ -1480,7 +1481,6 @@ exit:
 }
 
 void menu_import(){
-    //TODO: wrap into func?
     link_layer = SHOW;
     char filename[FILEDATA_NAME_LEN] = {0};
     char ret = read_filename(filename);
@@ -1503,20 +1503,24 @@ void menu_import(){
     element_zerofill(last_readed);
     scroll_set_head(HEAD);
     redraw_scroll();
+    print_to_status("Successfully imported");
 
-exit: //TODO: func?
+exit: 
     clear_lines(1, 3);
     start_quote();
-    print_to_status("Successfully imported");
 }
 
 void menu_process(){
-    list_process();
-    redraw_menu();
-    //TODO: clean_lines?
-    start_quote();
-    scroll_set_head(HEAD);
-    redraw_scroll();
+    if(list_len > 1){
+        list_process();
+        redraw_menu();
+        start_quote();
+        scroll_set_head(HEAD);
+        redraw_scroll();
+        print_to_status("Task completed");
+    } else {
+        print_error_or_mistake("Nothing to process");
+    }
 }
 
 int main(){
@@ -1536,11 +1540,11 @@ int main(){
     setCursorVisibility(FALSE);
     clear_lines(0, buffer_info.dwSize.Y);
     draw_menu();
+    start_quote();
     draw_header(0);
     scroll_last_line = BOTTOM_LINE - 1;
     draw_scroll();
-    
-    start_quote();
+    print_to_status("Showing elements");
 
     loop {
     

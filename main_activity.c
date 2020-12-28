@@ -16,7 +16,7 @@
 
 void print_to_status(char * str){
     setCursorPosition(0, BOTTOM_LINE);
-    printf(str);
+    printf(" %-50s", str);
 }
 
 void print_error_or_mistake(char * str){
@@ -35,7 +35,7 @@ void menu_add(){
     if(ret == KEY_ENTER){
         for(ListElement * cur = HEAD; cur; cur = cur->NEXT)
             if(cur->data.gradebook_number == last_readed->data.gradebook_number){
-                print_error_or_mistake("KEY ALREADY EXIST");
+                print_error_or_mistake("Key already exist!");
                 return;
             }
         list_add(last_readed);
@@ -101,8 +101,11 @@ unsigned char sort_by_field = 0;
 void menu_sort(){
     if(list_len > 1){
 
-        if(header_select_column(&sort_by_field) == KEY_ESC)
+        print_to_status("Use arrow keys to select table row to sort by");
+        if(header_select_column(&sort_by_field) == KEY_ESC){
+            print_to_status("Aborted. Showing elements");
             return;
+        }
 
         merge_sort(sort_by_field);
         //scroll_set_head(HEAD);
@@ -128,8 +131,11 @@ unsigned char search_by_field = 0;
 void menu_search(){
     redraw_header(search_by_field);
     
-    if(header_select_column(&search_by_field) == KEY_ESC)
+    print_to_status("Use arrow keys to select table row to search by");
+    if(header_select_column(&search_by_field) == KEY_ESC){
+        print_to_status("Aborted. Showing elements");
         goto exit;
+    }
 
     Field field = list_element_fields[search_by_field];
     setCursorPosition(0, EDITOR_POSY);
@@ -204,6 +210,7 @@ void menu_close_search(){
 }
 
 char read_filename(char * filename){
+    clear_lines(EDITOR_POSY - 1, EDITOR_POSY + 1);
     setCursorPosition(0, EDITOR_POSY);
     printf("Filename: ");
 
@@ -213,8 +220,10 @@ char read_filename(char * filename){
     int ret = ARROW_RIGHT;
     loop {
         ret = read_string(ret, len("Filename: ") - 1, filename, file_field);
-        if(ret == KEY_ENTER || ret == KEY_ESC)
+        if(ret == KEY_ENTER || ret == KEY_ESC){
+            print_to_status("Aborted. Showing elements");
             goto exit;
+        }
     }
 
 exit:
@@ -283,12 +292,17 @@ exit: //TODO: func?
 }
 
 void menu_process(){
-    list_process();
-    redraw_menu();
-    //TODO: clean_lines?
-    start_quote();
-    scroll_set_head(HEAD);
-    redraw_scroll();
+    if(list_len > 1){
+        list_process();
+        redraw_menu();
+        //TODO: clean_lines?
+        start_quote();
+        scroll_set_head(HEAD);
+        redraw_scroll();
+        print_to_status("Task completed");
+    } else {
+        print_error_or_mistake("Nothing to process");
+    }
 }
 
 int main(){
@@ -308,11 +322,11 @@ int main(){
     setCursorVisibility(FALSE);
     clear_lines(0, buffer_info.dwSize.Y);
     draw_menu();
+    start_quote();
     draw_header(0);
     scroll_last_line = BOTTOM_LINE - 1;
     draw_scroll();
-    
-    start_quote();
+    print_to_status("Showing elements");
 
     loop {
     

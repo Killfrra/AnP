@@ -124,7 +124,7 @@ char draw_editor(ListElement * elem){
     }
 
     setCursorVisibility(FALSE);
-    clear_lines(1, 3);
+    clear_lines(EDITOR_POSY - 1, EDITOR_POSY + 1);
 
     return ret;
 }

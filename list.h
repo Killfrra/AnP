@@ -20,7 +20,7 @@ typedef struct {
 
 typedef struct list_element {
     FileData data;
-    struct list_element * link[4];
+    struct list_element * link[4]; // 4 * 4
 } ListElement;
 
 typedef enum { SHOW = 0, SEARCH = 1 } ListLinkLayer;
@@ -200,12 +200,13 @@ void list_autoload(){
 			last_readed++;
 		}
 
+        fclose(file);
+
 	} else {
 		first_alloc_begin = last_readed = new(ListElement);
 		first_alloc_end = first_alloc_begin + 1;
 	}
 
-	fclose(file);
 }
 
 void list_autosave(){
