@@ -191,7 +191,8 @@ char read_string(char enter_dir, short posx, void * dest, Field field){
             (
                 (allow_digits && ch >= '0' && ch <= '9') ||
                 (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-                (ch >= 'а' && ch <= 'я') || (ch >= 'А' && ch <= 'Я') ||
+                //(ch >= 'а' && ch <= 'я') || (ch >= 'А' && ch <= 'Я') ||
+                (ch >= 160 && ch <= 239) || (ch >= 128 && ch <= 159) ||
                 (allow_special && (ch == '.' || ch == ':' || ch == '/' || ch == '\\' || ch == '_')) ||
                 // ќќќќќќ ќќ ќќќќќ ќќќќ ќќќќќќ, ќќ ќќќќќ ќќќќ ќќќ ќќќќ ќќќќќќ
                 (/*allow_spaces &&*/ ch == ' ' && (cursor_pos != 0 && buffer[cursor_pos - 1] != ' '))
@@ -204,7 +205,7 @@ char read_string(char enter_dir, short posx, void * dest, Field field){
 
                 if(last_char == buffer_size){
                     setCursorPosition(posx, EDITOR_POSY + 1);
-                    puts("Too many letters!");
+                    puts("Слишком много символов");
                     setCursorPosition(posx + cursor_pos, EDITOR_POSY);
                     continue;
                 }
@@ -534,7 +535,7 @@ void element_print(ListElement * cur){
     print_date(_->birth_date);
     printf("  ");
     print_date(_->admission_date);
-    printf("   %03hu  %-79s\n", _->USE_score, &_->full_name[1]); 
+    printf("   %03hu  %-32s\n", _->USE_score, &_->full_name[1]); 
 }
 
 // returns negative number on falture
@@ -622,7 +623,7 @@ void list_autoload(){
                 
         size_t file_size = get_file_size(file);
         if(file_size % sizeof(FileData) != 0)
-            puts(AUTOSAVE_FILE_NAME " seems to be corrupted");
+            puts("Файл " AUTOSAVE_FILE_NAME ", похоже, повреждён");
         file_size /= sizeof(FileData);
 
         first_alloc_begin = malloc((file_size + 1) * sizeof(ListElement));
@@ -645,13 +646,13 @@ void list_autoload(){
 void list_autosave(){
     FILE * file = fopen(AUTOSAVE_FILE_NAME, "wb");
     if(!file){
-        puts("can't open " AUTOSAVE_FILE_NAME " for writing");
+        puts("Не получается открыть " AUTOSAVE_FILE_NAME " для записи");
         return;
     }
 
     for(ListElement * cur = HEAD; cur; cur = cur->NEXT)
         if(!fwrite(&cur->data, sizeof(FileData), 1, file)){
-            puts("can't write to file");
+            puts("Запись в файл невозможна");
             goto exit;
         }
 
@@ -990,8 +991,8 @@ const char * const exit_quotes[] = {
 
 #define event_quote(event) \
 void event##_quote(){ \
-    setCursorPosition(1, 1); \
-    puts(event##_quotes[quotes_state.event]); \
+    setCursorPosition(0, 2); \
+    printf(" %s (c) Ария\n", event##_quotes[quotes_state.event]); \
     roll(quotes_state.event, len(event##_quotes)); \
 }
 
@@ -1061,7 +1062,7 @@ void redraw_scroll(){
     } else {
         clear_lines(scroll_first_line, scroll_last_line);
         setCursorPosition(0, E404_POSY);
-        puts(" Nothing to show");
+        puts(" Список пуст");
     }
 }
 
@@ -1151,13 +1152,13 @@ void menu_process();
 MenuItem menu_items[] = {
     item("+",  menu_add ),
     item("-",  menu_remove),
-    item("Edit",  menu_edit),
-    item("Search", menu_search),
-    item("Sort", menu_sort),
-    item("Export", menu_export),
-    item("Import", menu_import),
-    item("Save", empty_func),
-    item("Process", menu_process),
+    item("Правка",  menu_edit),
+    item("Поиск", menu_search),
+    item("Сортировка", menu_sort),
+    item("Экспорт", menu_export),
+    item("Импорт", menu_import),
+    item("Сохранение", empty_func),
+    item("Обработка", menu_process),
     item(" X ", menu_close_search)
 };
 
@@ -1263,13 +1264,13 @@ void menu_add(){
     if(link_layer == SEARCH)
         return;
     
-    print_to_status("Enter to submit. Esc to exit");
+    print_to_status("Enter для добавления. Esc для отмены");
     
     char ret = draw_editor(last_readed);
     if(ret == KEY_ENTER){
         for(ListElement * cur = HEAD; cur; cur = cur->NEXT)
             if(cur->data.gradebook_number == last_readed->data.gradebook_number){
-                print_error_or_mistake("Key already exist!");
+                print_error_or_mistake("Такой ключ уже есть!");
                 return;
             }
         list_add(last_readed);
@@ -1279,7 +1280,7 @@ void menu_add(){
         element_zerofill(last_readed);
         start_quote();
         redraw_scroll();
-        print_to_status("Element added");
+        print_to_status("Элемент добавлен");
     }
 }
 
@@ -1312,29 +1313,29 @@ void menu_remove(){
 
         remove_quote();
         redraw_scroll();
-        print_to_status("Element removed");
+        print_to_status("Элемент удалён");
     } else
-        print_error_or_mistake("Nothing to remove");
+        print_error_or_mistake("Нечего удалять");
 }
 
 void menu_edit(){
     if(scroll_selected_element){
-        print_to_status("Editing element. Changes applied immidiately");
+        print_to_status("Редактирование элемента. Изменения применяются мнгновенно");
         draw_editor(scroll_selected_element);
         edit_quote();
         redraw_scroll();
-        print_to_status("Element changed");
+        print_to_status("Элемент изменён");
     } else
-        print_error_or_mistake("Nothing to edit");
+        print_error_or_mistake("Нечего редактировать");
 }
 
 unsigned char sort_by_field = 0;
 void menu_sort(){
     if(list_len > 1){
 
-        print_to_status("Use arrow keys to select table row to sort by");
+        print_to_status("Используйте стрелочки чтобы выбрать столбец по которому сортировать");
         if(header_select_column(&sort_by_field) == KEY_ESC){
-            print_to_status("Aborted. Showing elements");
+            print_to_status("Отменено. Показ элементов");
             return;
         }
 
@@ -1352,27 +1353,28 @@ void menu_sort(){
         scroll_first_element_on_screen = cur;
         start_quote();
         redraw_scroll();
-        print_to_status("List sorted");
+        print_to_status("Список отсортирован");
     } else
-        print_error_or_mistake("Nothing to sort");
+        print_error_or_mistake("Нечего сортировать");
 }
 
 unsigned char search_by_field = 0;
 void menu_search(){
     redraw_header(search_by_field);
     
-    print_to_status("Use arrow keys to select table row to search by");
+    print_to_status("Используйте стрелочки чтобы выбрать столбец по которому искать");
     if(header_select_column(&search_by_field) == KEY_ESC){
-        print_to_status("Aborted. Showing elements");
+        print_to_status("Отменено. Показ элементов");
         goto exit;
     }
 
+	clear_lines(1, 3);
     Field field = list_element_fields[search_by_field];
     setCursorPosition(0, EDITOR_POSY);
-    printf("Value: ");
-    setCursorPosition(len("Value: ") + field.len, EDITOR_POSY);
+    printf("Значение: ");
+    setCursorPosition(len("Значение: ") + field.len, EDITOR_POSY);
     char mode = 'o';
-    printf(" Mode: %c", mode);
+    printf(" Режим: %c", mode);
     
     setCursorVisibility(TRUE);
 
@@ -1381,12 +1383,12 @@ void menu_search(){
     Field mode_field = { prop: { values: "\3o+-" } };
 
     loop { 
-        ret = field.read_func(ret, len("Value: ") - 1, field_value_ptr, field);
+        ret = field.read_func(ret, len("Значение: ") - 1, field_value_ptr, field);
         if(ret == KEY_ENTER)
             break;
         else if(ret == KEY_ESC)
             goto exit;
-        ret = read_char(ret, len("Value: ") + field.len + len(" Mode: ") - 1, &mode, mode_field);
+        ret = read_char(ret, len("Значение: ") + field.len + len(" Режим: ") - 1, &mode, mode_field);
         if(ret == KEY_ENTER)
             break;
         else if(ret == KEY_ESC)
@@ -1419,7 +1421,7 @@ void menu_search(){
     redraw_menu();
     scroll_set_head(heads[SEARCH]);
     redraw_scroll();
-    print_to_status("Search completed");
+    print_to_status("Поиск завершён");
 
 exit:
     clear_lines(1, 3);
@@ -1433,22 +1435,22 @@ void menu_close_search(){
     start_quote();
     scroll_set_head(HEAD);
     redraw_scroll();
-    print_to_status("Showing elements");
+    print_to_status("Показ элементов");
 }
 
 char read_filename(char * filename){
     clear_lines(EDITOR_POSY - 1, EDITOR_POSY + 1);
     setCursorPosition(0, EDITOR_POSY);
-    printf("Filename: ");
+    printf("Имя файла: ");
 
     setCursorVisibility(TRUE);
     
     Field file_field = { len: FILEDATA_NAME_LEN, prop: { allow: ALLOW_DIGITS | ALLOW_SPECIAL } };
     int ret = ARROW_RIGHT;
     loop {
-        ret = read_string(ret, len("Filename: ") - 1, filename, file_field);
+        ret = read_string(ret, len("Имя файла: ") - 1, filename, file_field);
         if(ret == KEY_ENTER || ret == KEY_ESC){
-            print_to_status("Aborted. Showing elements");
+            print_to_status("Отменено. Показ элементов");
             goto exit;
         }
     }
@@ -1467,20 +1469,20 @@ void menu_export(){
 
     FILE * file = fopen(&filename[1], "w");
     if(!file){
-        print_error_or_mistake("Error creating file");
+        print_error_or_mistake("Возникла ошибка при создании файла");
         return;
     }
 
     for(ListElement * cur = HEAD; cur; cur = cur->NEXT)
         if(element_print_to_txt(file, cur) <= 0){
-            print_error_or_mistake("Error writing to file");
+            print_error_or_mistake("Ошибка при записи в файл");
             fclose(file);
             return;
         }
     
     fflush(file);
     fclose(file);
-    print_to_status("Successfully exported");
+    print_to_status("Успешно экспортировано");
 
 exit:
     clear_lines(1, 3);
@@ -1496,7 +1498,7 @@ void menu_import(){
 
     FILE * file = fopen(&filename[1], "r");
     if(!file){
-        print_error_or_mistake("Error opening file");
+        print_error_or_mistake("Возникла ошибка при открытии файла");
         return;
     }
 
@@ -1510,7 +1512,7 @@ void menu_import(){
     element_zerofill(last_readed);
     scroll_set_head(HEAD);
     redraw_scroll();
-    print_to_status("Successfully imported");
+    print_to_status("Успешно импортировано");
 
 exit: 
     clear_lines(1, 3);
@@ -1524,9 +1526,9 @@ void menu_process(){
         start_quote();
         scroll_set_head(HEAD);
         redraw_scroll();
-        print_to_status("Task completed");
+        print_to_status("Обработка завершена");
     } else {
-        print_error_or_mistake("Nothing to process");
+        print_error_or_mistake("Нечего обрабатывать");
     }
 }
 
@@ -1551,7 +1553,7 @@ int main(){
     draw_header(0);
     scroll_last_line = BOTTOM_LINE - 1;
     draw_scroll();
-    print_to_status("Showing elements");
+    print_to_status("Показ элементов");
 
     loop {
     

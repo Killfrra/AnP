@@ -90,7 +90,7 @@ const char * const exit_quotes[] = {
 #define event_quote(event) \
 void event##_quote(){ \
     setCursorPosition(1, 1); \
-    puts(event##_quotes[quotes_state.event]); \
+    printf("%s (c) Ария", event##_quotes[quotes_state.event]); \
     roll(quotes_state.event, len(event##_quotes)); \
 }
 

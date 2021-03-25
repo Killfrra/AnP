@@ -345,7 +345,7 @@ void merge_sort(unsigned char field_id){
     TAIL->NEXT = NULL;
 }
 
-void list_free(){
+void list_free(){ //TODO: rename to list_zero
     link_layer = SHOW;
     freeded_elements = heads[SHOW]; //TODO: test
     heads[SHOW] = heads[SEARCH] = NULL;
