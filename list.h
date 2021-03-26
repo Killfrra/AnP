@@ -58,19 +58,19 @@ int cmpdte(Date * a, Date * b){
 	return a->y - b->y;
 }
 
-// Группа  Зачетка  Пол  Форма  Рождение    Поступление  ЕГЭ  ФИО                              //
+// пїЅпїЅпїЅпїЅпїЅпїЅ  пїЅпїЅпїЅпїЅпїЅпїЅпїЅ  пїЅпїЅпїЅ  пїЅпїЅпїЅпїЅпїЅ  пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ    пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ  пїЅпїЅпїЅ  пїЅпїЅпїЅ                              //
 // ......  ......    .     .    00.00.0000  00.00.0000   ...  ................................ //
 
 #define field(x, l, s, r, c, n, o, p) { x, l, s, r, c, n, offsetof(FileData, o), p }
 Field list_element_fields[] = {
-	field( 1,  6,             6, read_string     ,  strcmp, "Группа"     , group_name      , { allow: ALLOW_DIGITS }),
-	field( 9,  6,   sizeof(int), read_fixed_int  ,  intcmp, "Зачетка"    , gradebook_number, {0}),
-	field(19,  1,             1, read_char       ,  chrcmp, "Пол"        , gender          , { values: "\2mf"  }),
-	field(25,  1,             1, read_char       ,  chrcmp, "Форма"      , education_form  , { values: "\3ozd" }),
-	field(30, 10,  sizeof(Date), read_fixed_date ,  cmpdte, "Рождение  " , birth_date      , {0}),
-	field(42, 10,  sizeof(Date), read_fixed_date ,  cmpdte, "Поступление", admission_date  , {0}),
-	field(55,  3, sizeof(short), read_fixed_short,  shrcmp, "ЕГЭ"        , USE_score       , {0}),
-    field(60, 32,            32, read_string     ,  strcmp, "ФИО"        , full_name       , { allow: ALLOW_NOTHING })
+	field( 1,  6,             6, read_string     ,  strcmp, "пїЅпїЅпїЅпїЅпїЅпїЅ"     , group_name      , { allow: ALLOW_DIGITS }),
+	field( 9,  6,   sizeof(int), read_fixed_int  ,  intcmp, "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ"    , gradebook_number, {0}),
+	field(19,  1,             1, read_char       ,  chrcmp, "пїЅпїЅпїЅ"        , gender          , { values: "\2mf"  }),
+	field(25,  1,             1, read_char       ,  chrcmp, "пїЅпїЅпїЅпїЅпїЅ"      , education_form  , { values: "\3ozd" }),
+	field(30, 10,  sizeof(Date), read_fixed_date ,  cmpdte, "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ  " , birth_date      , {0}),
+	field(42, 10,  sizeof(Date), read_fixed_date ,  cmpdte, "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ", admission_date  , {0}),
+	field(55,  3, sizeof(short), read_fixed_short,  shrcmp, "пїЅпїЅпїЅ"        , USE_score       , {0}),
+    field(60, 32,            32, read_string     ,  strcmp, "пїЅпїЅпїЅ"        , full_name       , { allow: ALLOW_NOTHING })
 };
 #undef field
 
@@ -195,6 +195,7 @@ void list_autoload(){
 		first_alloc_begin = malloc((file_size + 1) * sizeof(ListElement));
 		first_alloc_end = first_alloc_begin + file_size;
 		last_readed = first_alloc_begin;
+        //TODO: bug: if an error occurs while reading the file, part of the memory will remain untoched 
 		while(fread(last_readed, sizeof(FileData), 1, file)){
 			list_add(last_readed);
 			last_readed++;
@@ -259,7 +260,7 @@ int list_element_compare(ListElement * a, ListElement * b){
 
 typedef struct {
     ListElement * first, * last;
-    ListElement * next; // указатель на начало следующего отрезка
+    ListElement * next; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 } Cut;
 
 Cut merge(Cut l1, Cut l2){
@@ -280,11 +281,11 @@ Cut merge(Cut l1, Cut l2){
             /*
             Q: why doesn't it fails when cur_[!min] == NULL
             A: cur_[!min] is never null
-            A: Потому что когда хоть в одном из списков встречается последний элемент...
-            В эту функцию всегда передаются два отрезка, каждый из которых в длинну > 3
-            При этом первый может быть короче второго на 1 элемент, но не наоборот
-            И второй отрезок идёт после первого в исходном списке
-            A: Но, да если вызвать функцию отдельно с некорректными данными, она может упасть
+            A: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ...
+            пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ > 3
+            пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 1 пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+            пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+            A: пїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             */
             connect(cur, cur_[!min]);
             cut.last = l[!min].last;
